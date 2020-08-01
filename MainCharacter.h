@@ -16,15 +16,29 @@ public:
 	AMainCharacter();
 
 	// create camera
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class UCameraComponent* CameraComponent;
 
 	// create classes for each of the skeletal mesh areas of the character
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* HelmetMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* ChestMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* LegsMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* FeetMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* VestMesh;
+
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* HandsMesh;
+	
+	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* BackpackMesh;
 
 protected:

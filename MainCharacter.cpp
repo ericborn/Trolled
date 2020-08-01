@@ -18,14 +18,27 @@ AMainCharacter::AMainCharacter()
 	//follows the control rotation which comes from the mouse input
 	CameraComponent->bUsePawnControlRotation = true;
 
-	// create skeletal components for each area of the body
+	// create skeletal components for each area of the body then attach using getmesh
 	HelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HelmetMesh");
+	HelmetMesh->SetupAttachment(GetMesh());
+
 	ChestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("ChestMesh");
+	ChestMesh->SetupAttachment(GetMesh());
+
 	LegsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("LegsMesh");
+	LegsMesh->SetupAttachment(GetMesh());
+
 	FeetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("FeetMesh");
+	FeetMesh->SetupAttachment(GetMesh());
+
 	VestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("VestMesh");
+	VestMesh->SetupAttachment(GetMesh());
+
 	HandsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HandsMesh");
+	HandsMesh->SetupAttachment(GetMesh());
+
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>("BackpackMesh");
+	BackpackMesh->SetupAttachment(GetMesh());
 
 }
 
