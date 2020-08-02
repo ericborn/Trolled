@@ -32,3 +32,36 @@ UInteractionComponent::UInteractionComponent()
     SetActive(true);
     SetHiddenInGame(true);
 }
+
+
+void UInteractionComponent::StartFocus(class AMainCharacter* Character) 
+{
+    // if the component isnt active, doesnt have an owner or the character is null, just return from function
+    if (!IsActive() || !GetOwner(), || !Character)
+    {
+        return;
+    }
+
+    // show UI
+    SetHiddenInGame(false);
+
+    // if not the server
+    if (!GetOwner()->HasAuthority())
+    {
+        // grab visual components, primitive
+        for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
+        {
+            // set outline around the object
+            if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(VisualComp))
+            {
+                Prim->SetRenderCustomDepth(true);
+            }
+        }  
+    }
+    
+}
+
+void UInteractionComponent::StopFocus(class AMainCharacter* Character) 
+{
+    
+}
