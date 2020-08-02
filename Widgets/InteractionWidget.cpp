@@ -2,7 +2,7 @@
 
 
 #include "InteractionWidget.h"
-#include "Components/InteractionComponent.h/"
+#include "Trolled/Components/InteractionComponent.h"
 
 
 void UInteractionWidget::UpdateInteractionWidget(class UInteractionComponent* InteractionComponent) 
@@ -12,9 +12,4 @@ void UInteractionWidget::UpdateInteractionWidget(class UInteractionComponent* In
 
     // call the update function
     OnUpdateInteractionWidget();
-}
-
-void UInteractionWidget::OnUpdateInteractionWidget() 
-{
-    
 }
