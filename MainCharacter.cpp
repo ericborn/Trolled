@@ -178,17 +178,17 @@ void AMainCharacter::NoFoundInteractable()
 void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable) 
 {
 	// stops any previous interacts before starting a new one
-	EndInteract();
+	StopInteract();
 
 	// stops focus on previous interactable
 	if (UInteractionComponent* OldInteractable = GetInteractable())
 	{
-		OldInteractable-> StopFocus(this)
+		OldInteractable-> StopFocus(this);
 	}
 	
 	// grab new Interactable and focus on it
 	InteractionData.ViewedInteractionComponent = Interactable;
-	Interactable->StartFocus(this)
+	Interactable->StartFocus(this);
 
 }
 
