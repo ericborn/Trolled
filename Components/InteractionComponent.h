@@ -43,6 +43,14 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
 	bool bAllowMultipleInteractors;
 
+	// allows dynamic changes to the interactables name and action text (on/off, open/close) depending on state
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void SetInteractableNameText(const FText& NewNameText);
+
+	UFUNCTION(BlueprintCallable, Category = "Interaction")
+	void SetInteractableActionText(const FText& NewActionText);
+
+
 	// Create delegates that bind to the interactable, allows each interact item to have different behaviors, with the same base functionality
 	// [Local + Server] Called when the player presses the interact button while looking at this interactable actor
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
@@ -64,6 +72,18 @@ public:
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
 	FOnInteract OnInteract;
 
+protected:
+	
+	// called at game start to clear all interactions
+	virtual void Deactivate() override;
+
+	// check if a character can interact with a specific object
+	bool CanInteract(class AMainCharacter* Character) const;
+
+	// server side array to store all characters interacting with an item, client side only stores self
+	UPROPERTY()
+	TArray<class AMainCharacter*> Interactors;
+
 
 public:
 	// Called on the client when a player interaction check trace starts or stops hitting this item
@@ -76,4 +96,9 @@ public:
 
 	// called when the interaction is performed
 	void Interact(class AMainCharacter* Character);
+
+	// returns value between 0-1 for progress through the interaction, used for interaction progress bar
+	// server side is the first interactors percentage, client side is the local interactors percentage
+	UFUNCTION(BlueprintPure, Category = "Interaction")
+	float GetInteractPercentage();
 };

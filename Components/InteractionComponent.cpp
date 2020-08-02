@@ -33,6 +33,26 @@ UInteractionComponent::UInteractionComponent()
     SetHiddenInGame(true);
 }
 
+void UInteractionComponent::SetInteractableNameText(const FText& NewNameText) 
+{
+    
+}
+
+void UInteractionComponent::SetInteractableActionText(const FText& NewActionText) 
+{
+    
+}
+
+void UInteractionComponent::Deactivate() 
+{
+    
+}
+
+bool UInteractionComponent::CanInteract(class AMainCharacter* Character) const
+{
+    
+}
+
 
 void UInteractionComponent::StartFocus(class AMainCharacter* Character) 
 {
@@ -53,6 +73,7 @@ void UInteractionComponent::StartFocus(class AMainCharacter* Character)
     {
         // grab visual components, primitive
         for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
+        //for (auto& VisualComp : GetOwner()->GetComponentsByClass(UStaticMeshComponent::StaticClass()))
         {
             // set outline around the object
             if (UPrimitiveComponent* Prim = Cast<UPrimitiveComponent>(VisualComp))
@@ -82,4 +103,9 @@ void UInteractionComponent::StopInteract(class AMainCharacter* Character)
 void UInteractionComponent::Interact(class AMainCharacter* Character) 
 {
     OnInteract.Broadcast(Character);
+}
+
+float UInteractionComponent::GetInteractPercentage() 
+{
+    
 }
