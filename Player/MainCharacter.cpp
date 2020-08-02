@@ -18,33 +18,49 @@ AMainCharacter::AMainCharacter()
 
 	// create and store character camera then attach to mesh
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("CameraComponent");
-	CameraComponent->SetupAttachment(GetMesh());
+	
+	// attaches the camera to the head socket
+	CameraComponent->SetupAttachment(GetMesh(), FName("CameraSocket"));
 	
 	//follows the control rotation which comes from the mouse input
 	CameraComponent->bUsePawnControlRotation = true;
 
-	// create skeletal components for each area of the body then attach using getmesh
+	// create skeletal components for each area of the body then attach 
+	// to the root using getmesh, which returns the head
 	HelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HelmetMesh");
 	HelmetMesh->SetupAttachment(GetMesh());
+	
+	// sets this mesh to follow the pose from the root node, which is the head
+	HelmetMesh->SetMasterPoseComponent(GetMesh());
 
 	ChestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("ChestMesh");
 	ChestMesh->SetupAttachment(GetMesh());
+	ChestMesh->SetMasterPoseComponent(GetMesh());
 
 	LegsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("LegsMesh");
 	LegsMesh->SetupAttachment(GetMesh());
+	LegsMesh->SetMasterPoseComponent(GetMesh());
 
 	FeetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("FeetMesh");
 	FeetMesh->SetupAttachment(GetMesh());
+	FeetMesh->SetMasterPoseComponent(GetMesh());
 
 	VestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("VestMesh");
 	VestMesh->SetupAttachment(GetMesh());
+	VestMesh->SetMasterPoseComponent(GetMesh());
 
 	HandsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HandsMesh");
 	HandsMesh->SetupAttachment(GetMesh());
+	HandsMesh->SetMasterPoseComponent(GetMesh());
 
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>("BackpackMesh");
 	BackpackMesh->SetupAttachment(GetMesh());
+	BackpackMesh->SetMasterPoseComponent(GetMesh());
 
+	// Hides the head for the player
+	GetMesh()->SetOwnerNoSee(true);
+
+	// Allows the character to crouch
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
 }
 
