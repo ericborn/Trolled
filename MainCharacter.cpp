@@ -181,14 +181,14 @@ void AMainCharacter::StartInteract()
 		Interactable->StartInteract(this);
 
 		// for instant interactions
-		if (FMath::IsNearlyZero(Interactable->InteracionTime))
+		if (FMath::IsNearlyZero(Interactable->InteractionTime))
 		{
 			Interact();
 		}
 		// sets a timer for interactions that are not instant
 		else
 		{
-			GetWorldTimerManager().SetTime(TimerHandle_Interact, this, &AMainCharacter::Interact, Interactable->InteractionTime, false);
+			GetWorldTimerManager().SetTimer(TimerHandle_Interact, this, &AMainCharacter::Interact, Interactable->InteractionTime, false);
 		}
 	}
 }
@@ -207,6 +207,7 @@ void AMainCharacter::StopInteract()
 	// clears the timer
 	GetWorldTimerManager().ClearTimer(TimerHandle_Interact);
 
+	// stops the interaction
 	if (UInteractionComponent* Interactable = GetInteractable())
 	{
 		Interactable->StopInteract(this);
