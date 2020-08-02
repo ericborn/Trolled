@@ -100,8 +100,16 @@ protected:
 	void FoundNewInteractable(UInteractionComponent* Interactable);
 
 	// called for player pushing interact button
-	void BeginInteract();
-	void EndInteract();
+	void StartInteract();
+	void StopInteract();
+
+	// RPC call to server for player pushing interact button
+	// reliable forces the client to send up to the server
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerStartInteract();
+
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerStopInteract();
 
 	// called once a player has successfully interacted
 	void Interact();
@@ -112,6 +120,8 @@ protected:
 
 	// helper to make grabbing the interactable faster
 	FORCEINLINE class UInteractionComponent* GetInteractable() const { return InteractionData.ViewedInteractionComponent; }
+
+	FtimeHandle TimerHandle_Interact;
 
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);

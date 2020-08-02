@@ -164,6 +164,76 @@ void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable)
 	}
 }
 
+// If not authority(server), call server interact
+// while holding interact, bInteractHeld is true
+void AMainCharacter::StartInteract() 
+{
+	if(!HasAuthority())
+	{
+		ServerStartInteract();
+	}
+
+	InteractionData.bInteractHeld = true;
+
+	// if item is interactable, start interacting
+	if(UInteractionComponent* Interactable = GetInteractable())
+	{
+		Interactable->BeginInteract(this);
+
+		// for instant interactions
+		if (FMath::IsNearlyZero(Interactable->InteracionTime))
+		{
+			Interact();
+		}
+		// sets a timer for interactions that are not instant
+		else
+		{
+			GetWorldTimerManager().SetTime(TimerHandle_Interact, this, &AMainCharacter::Interact, Interactable->InteractionTime, false);
+		}
+	}
+}
+
+// when interact released, bInteractHeld is false
+void AMainCharacter::StopInteract() 
+{
+		if(!HasAuthority())
+	{
+		ServerStopInteract();
+	}
+
+	// letting go of the interact button sets it back to false
+	InteractionData.bInteractHeld = false;
+
+	// clears the timer
+	GetWorldTimerManager().ClearTimer(TimerHandle_Interact);
+
+	if (UInteractionComponent* Interactable = GetInteractable())
+	{
+		Interactable->StopInteract(this);
+	}
+}
+
+void AMainCharacter::ServerStartInteract_Implementation() 
+{
+	StartInteract();
+}
+
+bool AMainCharacter::ServerStartInteract_Validate() 
+{
+	return true;
+}
+
+void AMainCharacter::ServerStopInteract_Implementation() 
+{
+	StopInteract();
+}
+
+bool AMainCharacter::ServerStopInteract_Validate() 
+{
+	return true;
+}
+
+
 //////////////////////////////////////////////////////////////////////////
 // Input
 
@@ -173,6 +243,9 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	check(PlayerInputComponent);
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMainCharacter::StartInteract);
+	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMainCharacter::StopInteract);
 
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AMainCharacter::StartCrouching);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AMainCharacter::StopCrouching);
