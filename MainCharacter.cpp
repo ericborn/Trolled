@@ -81,8 +81,17 @@ void AMainCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
-	// checks if the player is looking at an interactable
-	PerformInteractionCheck();
+	// performance checks to prevent the server from checking every tick if a player is looking at an interactable
+	// stores true only when a player is interacting
+	const bool bIsInteractingOnServer = (HasAuthority() && IsInteracting());
+
+	// if not the server or a player that is interacting and if the time 
+	// since last check is greater than check frequency, check again
+	if((!HasAuthority() || bIsInteractingOnServer) && GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency)
+	{
+		// checks if the player is looking at an interactable
+		PerformInteractionCheck();
+	}
 
 }
 
@@ -145,23 +154,42 @@ void AMainCharacter::PerformInteractionCheck()
 
 void AMainCharacter::NoFoundInteractable() 
 {
-	if (InteractionData.ViewedInteractionComponent)
+	// if theres an active timer, but the object is no longer found, clear the timer
+	if (GetWorldTimerManager().IsTimerActive(TimerHandle_Interact))
 	{
-		// hides component data when player looks away from object
-		InteractionData.ViewedInteractionComponent->SetHiddenInGame(true);
+		GetWorldTimerManager().ClearTimer(TimerHandle_Interact);
 	}
+
+	// if there was an interactable, stop focus and interact on it
+	if (UInteractionComponent* Interactable = GetInteractable())
+	{
+		Interactable-> StopFocus(this);
+
+		if (InteractionData.bInteractHeld)
+		{
+			StopInteract();
+		}
+	}
+
+	// clear pointer to the previous interaction component
+	InteractionData.ViewedInteractionComponent = nullptr;
 }
 
 void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable) 
 {
-	//UE_LOG(LogTemp, Warning, TEXT("Found item"));
-	
-	if(Interactable)
+	// stops any previous interacts before starting a new one
+	EndInteract();
+
+	// stops focus on previous interactable
+	if (UInteractionComponent* OldInteractable = GetInteractable())
 	{
-		// shows component data when player looks at object
-		Interactable->SetHiddenInGame(false);
-		InteractionData.ViewedInteractionComponent = Interactable;
+		OldInteractable-> StopFocus(this)
 	}
+	
+	// grab new Interactable and focus on it
+	InteractionData.ViewedInteractionComponent = Interactable;
+	Interactable->StartFocus(this)
+
 }
 
 // If not authority(server), call server interact
@@ -228,21 +256,37 @@ void AMainCharacter::Interact()
 	
 }
 
+// check if timer is active
+bool AMainCharacter::IsInteracting() const
+{
+	return GetWorldTimerManager().IsTimerActive(TimerHandle_Interact);
+}
+
+// returning remaining time
+float AMainCharacter::GetRemainingInteractTime() const
+{
+	return GetWorldTimerManager().GetTimerRemaining(TimerHandle_Interact);
+}
+
+// start interact on server
 void AMainCharacter::ServerStartInteract_Implementation() 
 {
 	StartInteract();
 }
 
+// check interact on server
 bool AMainCharacter::ServerStartInteract_Validate() 
 {
 	return true;
 }
 
+// stop interact on server
 void AMainCharacter::ServerStopInteract_Implementation() 
 {
 	StopInteract();
 }
 
+// check stopped interact on server
 bool AMainCharacter::ServerStopInteract_Validate() 
 {
 	return true;

@@ -125,6 +125,16 @@ protected:
 	// create a timer handle to keep track of players interaction time
 	FTimerHandle TimerHandle_Interact;
 
+public:
+	
+	// store if currently interacting
+	bool IsInteracting() const;
+
+	// store remaining interaction time
+	float GetRemainingInteractTime() const;
+
+
+protected:
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 
