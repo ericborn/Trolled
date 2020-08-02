@@ -6,6 +6,34 @@
 #include "GameFramework/Character.h"
 #include "MainCharacter.generated.h"
 
+// setup properties for character interacting with objects
+USTRUCT()
+struct FInteractionData
+{
+	GENERATED_BODY()
+
+	// setup defaults
+	FInteractionData()
+	{
+		ViewedInteractionComponent = nullptr;
+		LastInteractionCheckTime = 0.f;
+		bInteractHeld = false;
+	}
+
+	// stores the interactable component that player is looking at
+	UPROPERTY()
+	class UInteractionComponent* ViewedInteractionComponent;
+
+	// Time of last interactable check
+	// used to avoid having to check every tick for performance reasons
+	UPROPERTY()
+	float LastInteractionCheckTime;
+
+	// checks if the player is holding the interact button
+	UPROPERTY()
+	bool bInteractHeld;
+};
+
 UCLASS()
 class TROLLED_API AMainCharacter : public ACharacter
 {
@@ -53,6 +81,38 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// Tick function, called every frame
+	virtual void Tick(float DeltaTime) override;
+
+	// how often in seconds to check for an interactable object. 0 means every tick
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionCheckFrequency;
+
+	// how far to trace for an interactable object
+	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
+	float InteractionCheckDistance;
+
+	// checks if theres an interactable item in view
+	void PerformInteractionCheck();
+
+	// helper functions for PerformInteractionCheck
+	void NoFoundInteractable();
+	void FoundNewInteractable(UInteractionComponent* Interactable);
+
+	// called for player pushing interact button
+	void BeginInteract();
+	void EndInteract();
+
+	// called once a player has successfully interacted
+	void Interact();
+
+	// stores information about the current state of the players interaction
+	UPROPERTY()
+	FInteractionData InteractionData;
+
+	// helper to make grabbing the interactable faster
+	FORCEINLINE class UInteractionComponent* GetInteractable() const { return InteractionData.ViewedInteractionComponent; }
+
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 
@@ -76,9 +136,6 @@ protected:
 	void LookUpAtRate(float Rate);
 
 public:	
-	// Called every frame
-	virtual void Tick(float DeltaTime) override;
-
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
 

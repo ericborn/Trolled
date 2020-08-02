@@ -5,6 +5,7 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/InteractionComponent.h"
 
 // Sets default values
 AMainCharacter::AMainCharacter()
@@ -57,6 +58,10 @@ AMainCharacter::AMainCharacter()
 	BackpackMesh->SetupAttachment(GetMesh());
 	BackpackMesh->SetMasterPoseComponent(GetMesh());
 
+	// check every frame, max interaction distance 10m
+	InteractionCheckFrequency = 0.f;
+	InteractionCheckDistance = 1000.f;
+
 	// Hides the head for the player
 	GetMesh()->SetOwnerNoSee(true);
 
@@ -76,6 +81,76 @@ void AMainCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	// checks if the player is looking at an interactable
+	PerformInteractionCheck();
+
+}
+
+void AMainCharacter::PerformInteractionCheck() 
+{
+	
+	if (GetController() == nullptr)
+	{
+		return;
+	}
+	
+	// stores the world time
+	InteractionData.LastInteractionCheckTime = GetWorld()->GetTimeSeconds();
+
+	// variables for eye location and rotation
+	FVector EyesLoc;
+	FRotator EyesRot;
+
+	// set those variables from the characters point of view
+	GetController()->GetPlayerViewPoint(EyesLoc, EyesRot);
+
+	// Find the max distance the trace can cast from the players current position
+	FVector TraceStart = EyesLoc;
+	FVector TraceEnd = (EyesRot.Vector() * InteractionCheckDistance) + TraceStart;
+	FHitResult TraceHit;
+
+	// prevents own character from being detected by the line trace
+	FCollisionQueryParams QueryParams;
+	QueryParams.AddIgnoredActor(this);
+
+	// The line trace returns true if the player is looking at anything but itself
+	if(GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+	{
+		// check if the hit was an actor
+		if(TraceHit.GetActor())
+		{
+			// check if it has an interaction component
+			if (UInteractionComponent* InteractionComponent = Cast<UInteractionComponent>(TraceHit.GetActor()->GetComponentByClass(UInteractionComponent::StaticClass())))
+			{
+				// calculates distance to the object
+				float Distance = (TraceStart - TraceHit.ImpactPoint).Size();
+
+				// if object is new and distance is less than max interaction distance, found new interactable
+				if(InteractionComponent != GetInteractable() && Distance <= InteractionComponent->InteractionDistance)
+				{
+					FoundNewInteractable(InteractionComponent);
+				}
+				else if (Distance > InteractionComponent->InteractionDistance && GetInteractable())
+				{
+					NoFoundInteractable();
+				}
+
+				return;
+			}
+		}
+	}
+
+	NoFoundInteractable();
+}
+
+void AMainCharacter::NoFoundInteractable() 
+{
+	
+}
+
+void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable) 
+{
+	UE_LOG(LogTemp, Warning, TEXT("Found item"));
 }
 
 //////////////////////////////////////////////////////////////////////////
