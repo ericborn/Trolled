@@ -37,10 +37,13 @@ UInteractionComponent::UInteractionComponent()
 void UInteractionComponent::StartFocus(class AMainCharacter* Character) 
 {
     // if the component isnt active, doesnt have an owner or the character is null, just return from function
-    if (!IsActive() || !GetOwner(), || !Character)
+    if (!IsActive() || !GetOwner() || !Character)
     {
         return;
     }
+
+    // binds to the delegate when a player looks at the interactable
+    OnStartFocus.Broadcast(Character);
 
     // show UI
     SetHiddenInGame(false);
@@ -64,4 +67,19 @@ void UInteractionComponent::StartFocus(class AMainCharacter* Character)
 void UInteractionComponent::StopFocus(class AMainCharacter* Character) 
 {
     
+}
+
+void UInteractionComponent::StartInteract(class AMainCharacter* Character) 
+{
+    
+}
+
+void UInteractionComponent::StopInteract(class AMainCharacter* Character) 
+{
+    
+}
+
+void UInteractionComponent::Interact(class AMainCharacter* Character) 
+{
+    OnInteract.Broadcast(Character);
 }

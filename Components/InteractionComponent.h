@@ -43,7 +43,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
 	bool bAllowMultipleInteractors;
 
-	// Delegates
+	// Create delegates that bind to the interactable, allows each interact item to have different behaviors, with the same base functionality
 	// [Local + Server] Called when the player presses the interact button while looking at this interactable actor
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
 	FOnStartInteract OnStartInteract;

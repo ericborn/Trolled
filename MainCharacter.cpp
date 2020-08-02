@@ -178,7 +178,7 @@ void AMainCharacter::StartInteract()
 	// if item is interactable, start interacting
 	if(UInteractionComponent* Interactable = GetInteractable())
 	{
-		Interactable->BeginInteract(this);
+		Interactable->StartInteract(this);
 
 		// for instant interactions
 		if (FMath::IsNearlyZero(Interactable->InteracionTime))
@@ -211,6 +211,20 @@ void AMainCharacter::StopInteract()
 	{
 		Interactable->StopInteract(this);
 	}
+}
+
+// when interact is actually performed
+void AMainCharacter::Interact() 
+{
+	// clear the timer
+	GetWorldTimerManager().ClearTimer(TimerHandle_Interact);
+
+	// if the item is interactable, interact with it
+	if (UInteractionComponent* Interactable = GetInteractable())
+	{
+		Interactable->Interact(this);
+	}
+	
 }
 
 void AMainCharacter::ServerStartInteract_Implementation() 

@@ -4,6 +4,7 @@
 
 #include "CoreMinimal.h"
 #include "GameFramework/Character.h"
+#include "Engine/EngineTypes.h"
 #include "MainCharacter.generated.h"
 
 // setup properties for character interacting with objects
@@ -121,7 +122,8 @@ protected:
 	// helper to make grabbing the interactable faster
 	FORCEINLINE class UInteractionComponent* GetInteractable() const { return InteractionData.ViewedInteractionComponent; }
 
-	FtimeHandle TimerHandle_Interact;
+	// create a timer handle to keep track of players interaction time
+	FTimerHandle TimerHandle_Interact;
 
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
