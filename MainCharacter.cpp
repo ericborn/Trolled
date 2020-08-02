@@ -145,12 +145,23 @@ void AMainCharacter::PerformInteractionCheck()
 
 void AMainCharacter::NoFoundInteractable() 
 {
-	
+	if (InteractionData.ViewedInteractionComponent)
+	{
+		// hides component data when player looks away from object
+		InteractionData.ViewedInteractionComponent->SetHiddenInGame(true);
+	}
 }
 
 void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable) 
 {
-	UE_LOG(LogTemp, Warning, TEXT("Found item"));
+	//UE_LOG(LogTemp, Warning, TEXT("Found item"));
+	
+	if(Interactable)
+	{
+		// shows component data when player looks at object
+		Interactable->SetHiddenInGame(false);
+		InteractionData.ViewedInteractionComponent = Interactable;
+	}
 }
 
 //////////////////////////////////////////////////////////////////////////
