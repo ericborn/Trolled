@@ -86,6 +86,9 @@ protected:
 
 
 public:
+	// refreshes the interaction widget, used when changing stack size for an item, changing name or action text, etc.
+	void RefreshWidget();
+
 	// Called on the client when a player interaction check trace starts or stops hitting this item
 	void StartFocus(class AMainCharacter* Character);
 	void StopFocus(class AMainCharacter* Character);
