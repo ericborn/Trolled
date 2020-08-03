@@ -6,6 +6,9 @@
 #include "UObject/NoExportTypes.h"
 #include "BaseItem.generated.h"
 
+// Delegate used to update the UI anytime items are modified
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnItemModified);
+
 UENUM(BlueprintType)
 enum class EItemRarity : uint8
 {
@@ -28,6 +31,11 @@ protected:
 	//networking for UObject
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> & OutLifetimeProps) const override;
 	virtual bool IsSupportedForNetworking() const override;
+
+// allows changing items while the game is in the editor, when published the ability to modify items is removed
+#if WITH_EDITOR
+	virtual void PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) override;
+#endif
 
 public:
 	UBaseItem();
@@ -84,10 +92,17 @@ public:
 	UFUNCTION()
 	void OnRep_Quantity();
 
+	UFUNCTION(BlueprintCallable, Category = "Item")
+	void SetQuantity(const int32 NewQuantity);
+
 	// key used to efficiently replicate inventory items between client/server
 	// when key changes, server knows to send updated to client
 	UPROPERTY()
 	int32 RepKey;
+
+	// accessed by the delegate for inventory UI updates
+	UPROPERTY(BlueprintAssignable)
+	FOnItemModified OnItemModified;
 
 	// function for calculating stack weight, quantity * weight of single item
 	UFUNCTION(BlueprintCallable, Category = "Item")
@@ -96,6 +111,12 @@ public:
 	// function to hide/show items in the inventory
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual bool ShouldShowInInventory() const;
+
+	// use function, can override within the item to change how the use is implemented
+	virtual void Use(class AMainCharacter* Character);
+
+	// item added to inventory function, can be overridden to change how the use is implemented, equip directly, put in inventory, etc.
+	virtual void AddedToInventory(class UInventoryComponent* Inventory);
 
 	// Used to make an object that needs replicating. Must be called internally after modifying any replicated properties
 	void MarkDirtyForReplication();
