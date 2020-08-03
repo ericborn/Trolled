@@ -13,5 +13,11 @@ UCLASS()
 class TROLLED_API UItemTooltip : public UUserWidget
 {
 	GENERATED_BODY()
+
+public:
+
+	// reference to the item widget
+	UPROPERTY(BlueprintReadOnly, Category = "Tooltip", meta = (ExposeOnSpawn = true))
+	class UInventoryItemWidget* InventoryItemWidget;
 	
 };

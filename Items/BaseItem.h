@@ -95,6 +95,9 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	void SetQuantity(const int32 NewQuantity);
 
+	UFUNCTION(BlueprintPure, Category = "Item")
+	FORCEINLINE int32 GetQuantity() const { return Quantity; };
+
 	// key used to efficiently replicate inventory items between client/server
 	// when key changes, server knows to send updated to client
 	UPROPERTY()
