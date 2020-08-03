@@ -3,7 +3,7 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Items/BaseItem.h"
+#include "Trolled/Items/BaseItem.h"
 #include "FoodItem.generated.h"
 
 /**
@@ -22,10 +22,10 @@ public:
 	float HealthToHeal;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float HungerToRecover;
+	float StaminaToRecover;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float StaminaToRecover;
+	float HungerToRecover;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
 	float ThirstToRecover;	
