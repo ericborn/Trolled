@@ -101,16 +101,16 @@ protected:
 	void FoundNewInteractable(UInteractionComponent* Interactable);
 
 	// called for player pushing interact button
-	void StartInteract();
-	void StopInteract();
+	void BeginInteract();
+	void EndInteract();
 
 	// RPC call to server for player pushing interact button
 	// reliable forces the client to send up to the server
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerStartInteract();
+	void ServerBeginInteract();
 
 	UFUNCTION(Server, Reliable, WithValidation)
-	void ServerStopInteract();
+	void ServerEndInteract();
 
 	// called once a player has successfully interacted
 	void Interact();

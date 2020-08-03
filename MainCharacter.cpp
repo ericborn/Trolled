@@ -58,8 +58,8 @@ AMainCharacter::AMainCharacter()
 	BackpackMesh->SetupAttachment(GetMesh());
 	BackpackMesh->SetMasterPoseComponent(GetMesh());
 
-	// check every frame, max interaction distance 10m
-	InteractionCheckFrequency = 0.f;
+	// check every 0.2, max interaction distance 10m
+	InteractionCheckFrequency = 0.2f;
 	InteractionCheckDistance = 1000.f;
 
 	// Hides the head for the player
@@ -81,18 +81,30 @@ void AMainCharacter::Tick(float DeltaTime)
 {
 	Super::Tick(DeltaTime);
 
+	//PerformInteractionCheck();
+
 	// performance checks to prevent the server from checking every tick if a player is looking at an interactable
 	// stores true only when a player is interacting
-	const bool bIsInteractingOnServer = (HasAuthority() && IsInteracting());
+	// !!! ORIGINAL VERSION!!!
+	const bool bIsInteractingOnServer = (!HasAuthority() && IsInteracting());
+
+	// !!! FOUND IN SURVIVAL CHAR FILE!!!
+	//const bool bIsInteractingOnServer = (GetNetMode() == NM_DedicatedServer && IsInteracting());
 
 	// if not the server or a player that is interacting and if the time 
 	// since last check is greater than check frequency, check again
-	if((!HasAuthority() || bIsInteractingOnServer) && GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency)
+	//if (!HasAuthority() || bIsInteractingOnServer) 
+	//&& GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency)
+	if ((GetNetMode() != NM_DedicatedServer) && (GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency))
 	{
 		// checks if the player is looking at an interactable
 		PerformInteractionCheck();
+		// if (GEngine)
+		// {
+		// 	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("PerformInteractionCheck!")); 
+		// }
 	}
-
+	
 }
 
 void AMainCharacter::PerformInteractionCheck() 
@@ -123,10 +135,10 @@ void AMainCharacter::PerformInteractionCheck()
 	QueryParams.AddIgnoredActor(this);
 
 	// The line trace returns true if the player is looking at anything but itself
-	if(GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
+	if (GetWorld()->LineTraceSingleByChannel(TraceHit, TraceStart, TraceEnd, ECC_Visibility, QueryParams))
 	{
 		// check if the hit was an actor
-		if(TraceHit.GetActor())
+		if (TraceHit.GetActor())
 		{
 			// check if it has an interaction component
 			if (UInteractionComponent* InteractionComponent = Cast<UInteractionComponent>(TraceHit.GetActor()->GetComponentByClass(UInteractionComponent::StaticClass())))
@@ -135,7 +147,7 @@ void AMainCharacter::PerformInteractionCheck()
 				float Distance = (TraceStart - TraceHit.ImpactPoint).Size();
 
 				// if object is new and distance is less than max interaction distance, found new interactable
-				if(InteractionComponent != GetInteractable() && Distance <= InteractionComponent->InteractionDistance)
+				if (InteractionComponent != GetInteractable() && Distance <= InteractionComponent->InteractionDistance)
 				{
 					FoundNewInteractable(InteractionComponent);
 				}
@@ -167,7 +179,7 @@ void AMainCharacter::NoFoundInteractable()
 
 		if (InteractionData.bInteractHeld)
 		{
-			StopInteract();
+			EndInteract();
 		}
 	}
 
@@ -178,7 +190,7 @@ void AMainCharacter::NoFoundInteractable()
 void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable) 
 {
 	// stops any previous interacts before starting a new one
-	StopInteract();
+	EndInteract();
 
 	// stops focus on previous interactable
 	if (UInteractionComponent* OldInteractable = GetInteractable())
@@ -189,24 +201,23 @@ void AMainCharacter::FoundNewInteractable(UInteractionComponent* Interactable)
 	// grab new Interactable and focus on it
 	InteractionData.ViewedInteractionComponent = Interactable;
 	Interactable->StartFocus(this);
-
 }
 
 // If not authority(server), call server interact
 // while holding interact, bInteractHeld is true
-void AMainCharacter::StartInteract() 
+void AMainCharacter::BeginInteract() 
 {
-	if(!HasAuthority())
+	if (!HasAuthority())
 	{
-		ServerStartInteract();
+		ServerBeginInteract();
 	}
 
 	InteractionData.bInteractHeld = true;
 
 	// if item is interactable, start interacting
-	if(UInteractionComponent* Interactable = GetInteractable())
+	if (UInteractionComponent* Interactable = GetInteractable())
 	{
-		Interactable->StartInteract(this);
+		Interactable->BeginInteract(this);
 
 		// for instant interactions
 		if (FMath::IsNearlyZero(Interactable->InteractionTime))
@@ -222,11 +233,11 @@ void AMainCharacter::StartInteract()
 }
 
 // when interact released, bInteractHeld is false
-void AMainCharacter::StopInteract() 
+void AMainCharacter::EndInteract() 
 {
-		if(!HasAuthority())
+		if (!HasAuthority())
 	{
-		ServerStopInteract();
+		ServerEndInteract();
 	}
 
 	// letting go of the interact button sets it back to false
@@ -238,7 +249,7 @@ void AMainCharacter::StopInteract()
 	// stops the interaction
 	if (UInteractionComponent* Interactable = GetInteractable())
 	{
-		Interactable->StopInteract(this);
+		Interactable->EndInteract(this);
 	}
 }
 
@@ -269,25 +280,25 @@ float AMainCharacter::GetRemainingInteractTime() const
 }
 
 // start interact on server
-void AMainCharacter::ServerStartInteract_Implementation() 
+void AMainCharacter::ServerBeginInteract_Implementation() 
 {
-	StartInteract();
+	BeginInteract();
 }
 
 // check interact on server
-bool AMainCharacter::ServerStartInteract_Validate() 
+bool AMainCharacter::ServerBeginInteract_Validate() 
 {
 	return true;
 }
 
 // stop interact on server
-void AMainCharacter::ServerStopInteract_Implementation() 
+void AMainCharacter::ServerEndInteract_Implementation() 
 {
-	StopInteract();
+	EndInteract();
 }
 
 // check stopped interact on server
-bool AMainCharacter::ServerStopInteract_Validate() 
+bool AMainCharacter::ServerEndInteract_Validate() 
 {
 	return true;
 }
@@ -303,8 +314,8 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
 
-	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMainCharacter::StartInteract);
-	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMainCharacter::StopInteract);
+	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMainCharacter::BeginInteract);
+	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMainCharacter::EndInteract);
 
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AMainCharacter::StartCrouching);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AMainCharacter::StopCrouching);
@@ -349,7 +360,7 @@ void AMainCharacter::MoveForward(float Value)
 
 void AMainCharacter::MoveRight(float Value)
 {
-	if ( (Controller != NULL) && (Value != 0.0f) )
+	if ((Controller != NULL) && (Value != 0.0f))
 	{
 		// find out which way is right
 		const FRotator Rotation = Controller->GetControlRotation();
