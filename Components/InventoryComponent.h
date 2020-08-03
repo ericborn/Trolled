@@ -16,13 +16,19 @@ public:
 	// Sets default values for this component's properties
 	UInventoryComponent();
 
+	// used for enabling blueprints(UI) to use these functions
+	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	FORCEINLINE float GetWeightCapacity() const { return WeightCapacity; };
+	
+	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	FORCEINLINE int32 GetInventoryCapacity() const { return InventoryCapacity; };
+	
+	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	FORCEINLINE TArray<class UBaseItem*> GetItems() const { return InventoryArray; };
+
 protected:
 	// Called when the game starts
 	virtual void BeginPlay() override;
-
-public:	
-	// Called every frame
-	virtual void TickComponent(float DeltaTime, ELevelTick TickType, FActorComponentTickFunction* ThisTickFunction) override;
 
 protected:
 	// array for the current inventory, replicated to server
