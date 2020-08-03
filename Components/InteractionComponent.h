@@ -6,8 +6,8 @@
 #include "Components/WidgetComponent.h"
 #include "InteractionComponent.generated.h"
 
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStartInteract, class AMainCharacter*, Character);
-DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStopInteract, class AMainCharacter*, Character);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnBeginInteract, class AMainCharacter*, Character);
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnEndInteract, class AMainCharacter*, Character);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStartFocus, class AMainCharacter*, Character);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnStopFocus, class AMainCharacter*, Character);
 DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteract, class AMainCharacter*, Character);
@@ -15,6 +15,7 @@ DECLARE_DYNAMIC_MULTICAST_DELEGATE_OneParam(FOnInteract, class AMainCharacter*, 
 /**
  * 
  */
+// allows creating this component via blueprints
 UCLASS(ClassGroup = (Custom), meta = (BlueprintSpawnableComponent))
 class TROLLED_API UInteractionComponent : public UWidgetComponent
 {
@@ -33,11 +34,11 @@ public:
 
 	// Name text of the object when looking at it
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
-	FText InteractionNameText;
+	FText InteractableNameText;
 
 	// Action text of how to use the object when looking at it
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
-	FText InteractionActionText;
+	FText InteractableActionText;
 
 	// Whether mulitple players can interact at one time
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Interaction")
@@ -54,11 +55,11 @@ public:
 	// Create delegates that bind to the interactable, allows each interact item to have different behaviors, with the same base functionality
 	// [Local + Server] Called when the player presses the interact button while looking at this interactable actor
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
-	FOnStartInteract OnStartInteract;
+	FOnBeginInteract OnBeginInteract;
 
 	// [Local + Server] Called when the player releases the interact button, stops looking at this interactable actor or moves too far away
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
-	FOnStopInteract OnStopInteract;
+	FOnEndInteract OnEndInteract;
 
 	// [Local + Server] Called when the player looks at this interactable actor
 	UPROPERTY(EditDefaultsOnly, BlueprintAssignable)
@@ -94,8 +95,8 @@ public:
 	void StopFocus(class AMainCharacter* Character);
 
 	// Called on the client when a player starts or stops interacting with this item
-	void StartInteract(class AMainCharacter* Character);
-	void StopInteract(class AMainCharacter* Character);
+	void BeginInteract(class AMainCharacter* Character);
+	void EndInteract(class AMainCharacter* Character);
 
 	// called when the interaction is performed
 	void Interact(class AMainCharacter* Character);

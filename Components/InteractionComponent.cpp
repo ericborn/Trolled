@@ -10,17 +10,17 @@ UInteractionComponent::UInteractionComponent()
     // disable tick since we dont need to check every frame, only when interacting
     SetComponentTickEnabled(false);
 
-    // interact time
+    // interact time, default is instant
     InteractionTime = 0.f;
     
     // interact distance 2m
     InteractionDistance = 200.f;
 
     // default name text
-    InteractionNameText = FText::FromString("Interactable Object");
+    InteractableNameText = FText::FromString("Interactable Object");
 
     // default interact text
-    InteractionActionText = FText::FromString("Interact");
+    InteractableActionText = FText::FromString("Interact");
 
     // allow multiple interactors
     bAllowMultipleInteractors = true;
@@ -38,14 +38,14 @@ UInteractionComponent::UInteractionComponent()
 void UInteractionComponent::SetInteractableNameText(const FText& NewNameText) 
 {
     // changes the text then refreshes the widget to update the UI
-    InteractionNameText = NewNameText;
+    InteractableNameText = NewNameText;
     RefreshWidget();
 }
 
 void UInteractionComponent::SetInteractableActionText(const FText& NewActionText) 
 {
     // changes the text then refreshes the widget to update the UI
-    InteractionActionText = NewActionText;
+    InteractableActionText = NewActionText;
     RefreshWidget();
 }
 
@@ -59,7 +59,7 @@ void UInteractionComponent::Deactivate()
         if(AMainCharacter* Interactor = Interactors[i])
         {
             StopFocus(Interactor);
-            StopInteract(Interactor);
+            EndInteract(Interactor);
         }
     }
 
@@ -101,12 +101,17 @@ void UInteractionComponent::StartFocus(class AMainCharacter* Character)
     // binds to the delegate when a player looks at the interactable
     OnStartFocus.Broadcast(Character);
 
-    // show UI
-    SetHiddenInGame(false);
-
+   
     // if not the server
-    if (!GetOwner()->HasAuthority())
+    // method from video doesnt work
+    //if (!GetOwner()->HasAuthority())
+
+    // found from original code files
+    if (GetNetMode() != NM_DedicatedServer)
     {
+         // show UI
+        SetHiddenInGame(false);
+
         // grab visual components, primitive
         for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
         {
@@ -117,7 +122,8 @@ void UInteractionComponent::StartFocus(class AMainCharacter* Character)
             }
         }  
     }
-    
+
+    RefreshWidget();
 }
 
 void UInteractionComponent::StopFocus(class AMainCharacter* Character) 
@@ -125,12 +131,12 @@ void UInteractionComponent::StopFocus(class AMainCharacter* Character)
     // binds to the delegate when a player looks at the interactable
     OnStopFocus.Broadcast(Character);
 
-    // show UI
-    SetHiddenInGame(true);
-
     // if not the server
-    if (!GetOwner()->HasAuthority())
+    if (GetNetMode() != NM_DedicatedServer)
     {
+        // Hide UI
+        SetHiddenInGame(true);
+
         // grab visual components, primitive
         for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
         {
@@ -143,7 +149,7 @@ void UInteractionComponent::StopFocus(class AMainCharacter* Character)
     }
 }
 
-void UInteractionComponent::StartInteract(class AMainCharacter* Character) 
+void UInteractionComponent::BeginInteract(class AMainCharacter* Character) 
 {
     if (CanInteract(Character))
     {
@@ -151,17 +157,17 @@ void UInteractionComponent::StartInteract(class AMainCharacter* Character)
         Interactors.AddUnique(Character);
 
         // calls delegate to start the interact
-        OnStartInteract.Broadcast(Character);
+        OnBeginInteract.Broadcast(Character);
     }
 }
 
-void UInteractionComponent::StopInteract(class AMainCharacter* Character) 
+void UInteractionComponent::EndInteract(class AMainCharacter* Character) 
 {
     // remove the player from list of interactors
     Interactors.RemoveSingle(Character);
     
     // calls delegate to stop the interact
-    OnStopInteract.Broadcast(Character);
+    OnEndInteract.Broadcast(Character);
 }
 
 void UInteractionComponent::Interact(class AMainCharacter* Character) 
