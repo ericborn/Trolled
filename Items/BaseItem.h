@@ -7,7 +7,7 @@
 #include "BaseItem.generated.h"
 
 UENUM(BlueprintType)
-enum class EItemRarity : unit8
+enum class EItemRarity : uint8
 {
 	IR_Common UMETA(DisplayName = "Common"),
 	IR_Uncommon UMETA(DisplayName = "Uncommon"),
@@ -23,6 +23,11 @@ UCLASS(Blueprintable, EditInlineNew, DefaultToInstanced)
 class TROLLED_API UBaseItem : public UObject
 {
 	GENERATED_BODY()
+
+protected:
+	//networking for UObject
+	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> & OutLifetimeProps) const override;
+	virtual bool IsSupportedForNetworking() const override;
 
 public:
 	UBaseItem();
@@ -60,7 +65,7 @@ public:
 	bool bStackable;
 
 	// Max stack size
-	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item", meta = (ClampMin = 2.0), EditCondition = bStackable))
+	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item", meta = (ClampMin = 2, EditCondition = bStackable))
 	int32 MaxStackSize;
 
 	// item tooltip
@@ -75,6 +80,15 @@ public:
 	UPROPERTY()
 	class UInventoryComponent* OwningInventory;
 
+	// function for replicating quantity changes
+	UFUNCTION()
+	void OnRep_Quantity();
+
+	// key used to efficiently replicate inventory items between client/server
+	// when key changes, server knows to send updated to client
+	UPROPERTY()
+	int32 RepKey;
+
 	// function for calculating stack weight, quantity * weight of single item
 	UFUNCTION(BlueprintCallable, Category = "Item")
 	FORCEINLINE float GetStackWeight() const { return Quantity * Weight; };
@@ -82,5 +96,8 @@ public:
 	// function to hide/show items in the inventory
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual bool ShouldShowInInventory() const;
+
+	// Used to make an object that needs replicating. Must be called internally after modifying any replicated properties
+	void MarkDirtyForReplication();
 };
 
