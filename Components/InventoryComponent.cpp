@@ -14,6 +14,20 @@ UInventoryComponent::UInventoryComponent()
 
 }
 
+// exposed version for item instance that just calls TryAddItem_Internal
+FItemAddResult UInventoryComponent::TryAddItem(class UBaseItem* Item) 
+{
+	return TryAddItem_Internal(Item);
+}
+
+// exposed version for item class that just calls TryAddItem_Internal
+FItemAddResult UInventoryComponent::TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity) 
+{
+	UBaseItem* Item = NewObject<UBaseItem>(GetOwner(), ItemClass);
+	Item->SetQuantity(Quantity);
+	return TryAddItem_Internal(Item);
+}
+
 
 // Called when the game starts
 void UInventoryComponent::BeginPlay()
@@ -55,6 +69,11 @@ bool UInventoryComponent::ReplicateSubobjects(class UActorChannel *Channel, clas
 }
 
 void UInventoryComponent::OnRep_Items() 
+{
+	
+}
+
+FItemAddResult UInventoryComponent::TryAddItem_Internal(class UBaseItem* Item) 
 {
 	
 }

@@ -7,6 +7,78 @@
 #include "Components/ActorComponent.h"
 #include "InventoryComponent.generated.h"
 
+// enum for selecting if the add item operation was not, partially or fully successful
+UENUM(BlueprintType)
+enum class EItemAddResult : uint8
+{
+	IAR_NoItemsAdded UMETA(DisplayName = "No items added"),
+	IAR_SomeItemsAdded UMETA(DisplayName = "Some items added"),
+	IAR_AllItemsAdded UMETA(DisplayName = "All items added")
+};
+
+// create a struct and add it to bp
+USTRUCT(BlueprintType)
+struct FItemAddResult
+{
+	GENERATED_BODY()
+
+public:
+
+	// constructors
+	FItemAddResult() {};
+	FItemAddResult(int32 InItemQuantity) : AmountToGive(InItemQuantity), ActualAmountGiven(0) {};
+	FItemAddResult(int32 InItemQuantity, int32 InQuantityAdded) : AmountToGive(InItemQuantity), ActualAmountGiven(InQuantityAdded) {};
+
+	// amount trying to be added
+	UPROPERTY(BlueprintReadOnly, Category = "Item Add Result")
+	int32 AmountToGive;
+
+	// amount actually added
+	UPROPERTY(BlueprintReadOnly, Category = "Item Add Result")
+	int32 ActualAmountGiven;
+
+	// result of the attempt
+	UPROPERTY(BlueprintReadOnly, Category = "Item Add Result")
+	EItemAddResult Result;
+
+	// if there was an error, what was it
+	UPROPERTY(BlueprintReadOnly, Category = "Item Add Result")
+	FText ErrorText;
+
+	// helpers
+	// no items added
+	static FItemAddResult AddedNone(const int32 InItemQuantity, const FText& ErrorText)
+	{
+		FItemAddResult AddedNoneResult(InItemQuantity);
+		AddedNoneResult.Result = EItemAddResult::IAR_NoItemsAdded;
+		AddedNoneResult.ErrorText = ErrorText;
+
+		return AddedNoneResult;
+	}
+
+	// some items added
+	static FItemAddResult AddedSome(const int32 InItemQuantity, const int32 ActualAmountGiven, const FText& ErrorText)
+	{
+		FItemAddResult AddedSomeResult(InItemQuantity, ActualAmountGiven);
+
+		AddedSomeResult.Result = EItemAddResult::IAR_SomeItemsAdded;
+		AddedSomeResult.ErrorText = ErrorText;
+
+		return AddedSomeResult;
+	}
+
+	// All items added
+	static FItemAddResult AddedAll(const int32 InItemQuantity)
+	{
+		FItemAddResult AddedAllResult(InItemQuantity, InItemQuantity);
+
+		AddedAllResult.Result = EItemAddResult::IAR_AllItemsAdded;
+
+		return AddedAllResult;
+	}
+
+};
+
 UCLASS( ClassGroup=(Custom), meta=(BlueprintSpawnableComponent) )
 class TROLLED_API UInventoryComponent : public UActorComponent
 {
@@ -15,6 +87,21 @@ class TROLLED_API UInventoryComponent : public UActorComponent
 public:	
 	// Sets default values for this component's properties
 	UInventoryComponent();
+
+	// allows base item to access private functions inside of inventory component
+	friend class UBaseItem;
+
+	/** Add item to inventory
+	 * @param ErrorText the text to display if the item couldnt be added
+	 * @return the amount of the item that was added to the inventory */
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FItemAddResult TryAddItem(class UBaseItem* Item);
+
+	/** Add item to inventory using items class instead of item instance
+	 * @param ErrorText the text to display if the item couldnt be added
+	 * @return the amount of the item that was added to the inventory */
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	FItemAddResult TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
 
 	// used for enabling blueprints(UI) to use these functions
 	UFUNCTION(BlueprintPure,  Category = "Inventory")
@@ -56,5 +143,8 @@ private:
 	// used to control when an item needs to be replicated
 	UPROPERTY()
 	int32 ReplicatedItemsKey;
+
+	// Internal, non-BP exposed add item function. Not used directly, call TryAddItem() or TryAddItemFromClass()
+	FItemAddResult TryAddItem_Internal(class UBaseItem* Item);
 		
 };
