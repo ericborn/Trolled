@@ -12,9 +12,28 @@
 // Sets default values
 APickupBase::APickupBase()
 {
- 	// Set this actor to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
-	PrimaryActorTick.bCanEverTick = true;
+	// setup mesh
+	PickupMesh = CreateDefaultSubobject<UStaticMeshComponent>("PickupMesh");
 
+	// no collision between pickups and pawns
+	PickupMesh->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+
+	// set the PickupMesh as the root component
+	SetRootComponent(PickupMesh);
+
+	// add interaction component to the pickup item base
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>("PickupInteractionComponent")
+
+	// set default interaction time, distance, pickup, action text, functionality for when the pickup is taken, bind interaction to the static mesh
+	InteractionComponent->InteractionTime = 0.1f;
+	InteractionComponent->InteractionDistance = 200.f;
+	InteractionComponent->InteractableNameText = FText::FromString("Pickup");
+	InteractionComponent->InteractableActionText = FText::FromString("Take");
+	InteractionComponent->OnInteract.AddDynamic(this, &APickup::OnTakePickup);
+	InteractionComponent->SetupAttachment(PickupMesh);
+
+	// enable replication
+	SetReplicates(true);
 }
 
 // create the pickups, set qty, rep item and mark dirty in the event a player drops an item back into the world
@@ -121,9 +140,36 @@ bool APickupBase::ReplicatedSubobjects(class UActorChannel *Channel, class FOutB
 		}
     }
 }
+#endif
 
 void APickupBase::OnTakePickup(class AMainCharacter* Taker) 
 {
-	
+	// check the player is valid, log if it is not
+	if (!Taker)
+	{
+		UE_LOG(LogTemp, Warning, TEXT("Pickup was taken, but player not valid"));
+		return;
+	}
+
+	// check that is server, item wasnt taken from a player that was killed, valid item
+	if(HasAuthority() && !IsPendingKillPending() && Item)
+	{
+		// if players inventory is valid
+		if (UInventoryComponent* PlayerInventory = Taker->PlayerInventory)
+		{
+			// check what the add result was
+			const FItemAddResult AddResult = PlayerInventory->TryAddItem(Item);
+
+			// if actual amount taken was less than total quantity, set quantity for pickup to new value
+			if (AddResult.ActualAmountGiven < Item->GetQuantity())
+			{
+				Item->SetQuantity(Item->GetQuantity()) - AddResult.ActualAmountGiven);
+			}
+			// if it was more than or equal to total pickup quantity, destroy the pickup from the world
+			else if (AddResult.ActualAmountGiven >= Item->GetQuantity())
+			{
+				Destroy();
+			}
+		}
+	}
 }
-#endif

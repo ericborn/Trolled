@@ -30,7 +30,7 @@ bool UBaseItem::IsSupportedForNetworking() const
     // find the name of the property that was changed
     FName ChangedPropertyName = PropertyChangedEvent.Property ? PropertyChangedEvent.Property->GetFName() : NAME_None;
 
-    // UPROPERTY claming doesn't support using a variable to clamp, so its done here
+    // UPROPERTY doesn't support using a variable to clamp, so its done here
     if (ChangedPropertyName == GET_MEMBER_NAME_CHECKED(UBaseItem, Quantity))
     {
         // sets quantity of item being set in the BP to follow the max stack size defined at the base item level
