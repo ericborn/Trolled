@@ -2,11 +2,17 @@
 
 
 #include "MainCharacter.h"
+#include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
+#include "GameFramework/PlayerState.h"
+#include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/DamageType.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Components/CapsuleComponent.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Components/InteractionComponent.h"
+#include "Trolled/World/PickupBase.h"
 
 // Constrcutor of main character, set default values here
 AMainCharacter::AMainCharacter()
@@ -290,6 +296,108 @@ bool AMainCharacter::IsInteracting() const
 float AMainCharacter::GetRemainingInteractTime() const
 {
 	return GetWorldTimerManager().GetTimerRemaining(TimerHandle_Interact);
+}
+
+void AMainCharacter::UseItem(class UBaseItem* Item) 
+{
+	// other way to check if you're the client, as the server is ROLE_Authority
+	// check for valid item, tell the server to use item to prevent cheating
+	
+	//if (Role < ROLE_Authority && Item)
+	// version above from video throws error: 
+	// AActor::Role cannot access private member declared in class 'AActor'
+	// Using auth check below which has been used in previous videos
+	if(!HasAuthority() && Item)
+	{
+		ServerUseItem(Item);
+	}
+
+	// if server, check for item
+	if(HasAuthority())
+	{
+		//if item not found in inventory, return
+		if(PlayerInventory && !PlayerInventory->FindItem(Item))
+		{
+			return;
+		}
+	}
+
+	// since use is dependent on item type, call item use function and let it handle 
+	// how its used
+	if (Item)
+	{
+		Item->Use(this);
+	}
+}
+
+void AMainCharacter::ServerUseItem_Implementation(class UBaseItem* Item) 
+{
+	UseItem(Item);
+}
+
+bool AMainCharacter::ServerUseItem_Validate(class UBaseItem* Item) 
+{
+	return true;
+}
+
+void AMainCharacter::DropItem(class UBaseItem* Item, const int32 Quantity) 
+{
+	// look for valid inventory, item and item in inventory
+	if (PlayerInventory && Item && PlayerInventory->FindItem(Item))
+	{
+		//if (Role < ROLE_Authority && Item)
+		// version above from video throws error: 
+		// AActor::Role cannot access private member declared in class 'AActor'
+		// Using auth check below which has been used in previous videos
+		if(!HasAuthority() && Item)
+		{
+			ServerDropItem(Item, Quantity);
+			return;
+		}
+
+		// if server, check for item
+		if(HasAuthority())
+		{
+			const int32 ItemQuantity = Item->GetQuantity();
+			const int32 DroppedQuantity = PlayerInventory->ConsumeQuantity(Item, Quantity);
+
+			// Spawn params, this player is the owner, cannot fail, try to adjust drop outside of collision meshes (walls, ground, rocks, etc.)
+			FActorSpawnParameters SpawnParams;
+			SpawnParams.Owner = this;
+			SpawnParams.bNoFail = true;
+			SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+			// get players location
+			FVector SpawnLocation = GetActorLocation();
+
+			// set location height to half of the capsule
+			SpawnLocation.Z -= GetCapsuleComponent()->GetScaledCapsuleHalfHeight();
+
+			// sets rotation of the dropped item to match the players rotation
+			FTransform SpawnTransform(GetActorRotation(), SpawnLocation);
+
+			// validation dropped item is a pickup class
+			ensure(PickupClass);
+
+			// create the pickup and spawn it in the world using the spawn parameters
+			if(APickupBase* Pickup = GetWorld()->SpawnActor<APickupBase>(PickupClass, SpawnTransform, SpawnParams))
+			{
+				// initalize with class and quantity
+				Pickup->InitializePickup(Item->GetClass(), DroppedQuantity);
+			}
+			
+		}
+	}
+}
+
+void AMainCharacter::ServerDropItem_Implementation(class UBaseItem* Item, const int32 Quantity) 
+{
+	DropItem(Item, Quantity);
+}
+
+bool AMainCharacter::ServerDropItem_Validate(class UBaseItem* Item, const int32 Quantity) 
+{
+	return true;
 }
 
 // start interact on server

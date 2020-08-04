@@ -136,6 +136,26 @@ public:
 	// store remaining interaction time
 	float GetRemainingInteractTime() const;
 
+	// Items 
+	// use item from inventory
+	UFUNCTION(BlueprintCallable, Category = "Items")
+	void UseItem(class UBaseItem* Item);
+
+	// server use item from inventory
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerUseItem(class UBaseItem* Item);
+
+	// drop item from inventory
+	UFUNCTION(BlueprintCallable, Category = "Items")
+	void DropItem(class UBaseItem* Item, const int32 Quantity);
+
+	// server drop item from inventory
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerDropItem(class UBaseItem* Item, const int32 Quantity);
+
+	// subclass of pickup since it uses bp as base class
+	UPROPERTY(EditDefaultsOnly, Category = "Items")
+	TSubclassOf<class APickupBase> PickupClass;
 
 protected:
 	/** Called for forwards/backward input */
