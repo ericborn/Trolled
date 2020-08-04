@@ -218,6 +218,13 @@ void AMainCharacter::BeginInteract()
 		ServerBeginInteract();
 	}
 
+	// If an item is non-instant interact, server checks every tick for the duration of the 
+	// interact so that it continues to focus as the interaction is happening
+	if (HasAuthority())
+	{
+		PerformInteractionCheck();
+	}
+
 	InteractionData.bInteractHeld = true;
 
 	// if item is interactable, start interacting
