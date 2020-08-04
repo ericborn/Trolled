@@ -87,12 +87,12 @@ class TROLLED_API UInventoryComponent : public UActorComponent
 {
 	GENERATED_BODY()
 
+	// allows base item to access private functions inside of inventory component
+	friend class UBaseItem;
+
 public:	
 	// Sets default values for this component's properties
 	UInventoryComponent();
-
-	// allows base item to access private functions inside of inventory component
-	friend class UBaseItem;
 
 	/** Add item to inventory
 	 * @param ErrorText the text to display if the item couldnt be added
@@ -104,11 +104,11 @@ public:
 	 * @param ErrorText the text to display if the item couldnt be added
 	 * @return the amount of the item that was added to the inventory */
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
-	FItemAddResult TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
+	FItemAddResult TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity = 1);
 
 	// removes all or some quantity away from an item or the item itself when quantity reaches 0.
-	int32 ConsumeAll(Class UBaseItem* Item);
-	int32 ConsumeQuantity(Class UBaseItem* Item, const int32 Quantity);
+	int32 ConsumeAll(class UBaseItem* Item);
+	int32 ConsumeQuantity(class UBaseItem* Item, const int32 Quantity);
 
 	// remove item from inventory
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
@@ -139,11 +139,11 @@ public:
 	float GetCurrentWeight() const;
 
 	// set max weight capacity
-	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetWeightCapacity(const float NewWeightCapacity);
 
 	// set max inventory capacity
-	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	void SetInventoryCapacity(const int32 NewInventoryCapacity);
 
 
@@ -166,7 +166,7 @@ public:
 
 protected:
 	// array for the current inventory, replicated to server
-	UPROPERTY(ReplicatedUsing = OnRep_Items, VisibleAnywhere, Category = "Inventory")
+	UPROPERTY(ReplicatedUsing = OnRep_InventoryArray, VisibleAnywhere, Category = "Inventory")
 	TArray<class UBaseItem*> InventoryArray;
 
 	// total inventory slots, increased with bags
@@ -185,11 +185,13 @@ protected:
 private:
 
 	// Dont call InventoryArray.Add() directly, use this function as it handles ownership and replication
-	UBaseItem* AddItem(class UBaseItem* Item)
+	UBaseItem* AddItem(class UBaseItem* Item);
 
 	// used to refresh UI when items gained, used, equipped, etc
 	UFUNCTION()
-	void OnRep_Items();
+	void OnRep_InventoryArray();
+	// original function
+	//void OnRep_Items();
 
 	// used to control when an item needs to be replicated
 	UPROPERTY()

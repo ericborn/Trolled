@@ -31,7 +31,7 @@ FItemAddResult UInventoryComponent::TryAddItemFromClass(TSubclassOf<class UBaseI
 	return TryAddItem_Internal(Item);
 }
 
-int32 UInventoryComponent::ConsumeAll(Class UBaseItem* Item) 
+int32 UInventoryComponent::ConsumeAll(class UBaseItem* Item) 
 {
 	if (Item)
 	{
@@ -41,7 +41,7 @@ int32 UInventoryComponent::ConsumeAll(Class UBaseItem* Item)
 }
 
 // only consume if server calls the function
-int32 UInventoryComponent::ConsumeQuantity(Class UBaseItem* Item, const int32 Quantity) 
+int32 UInventoryComponent::ConsumeQuantity(class UBaseItem* Item, const int32 Quantity) 
 {
 	if (GetOwner() && GetOwner()->HasAuthority() && Item)
 	{
@@ -78,10 +78,14 @@ bool UInventoryComponent::RemoveItem(class UBaseItem* Item)
 	// !!! GetOwner()->HasAuthority() didnt work when previously implemented on character? !!!
 	if (GetOwner() && GetOwner()->HasAuthority())
 	{
-		if (item)
+		if (Item)
 		{
 			// remove item from inventory array
 			InventoryArray.RemoveSingle(Item);
+
+			//OnItemRemoved.Broadcast(Item);
+
+			OnRep_InventoryArray();
 
 			// increments the rep key so the server knows it needs to push updates to the client
 			ReplicatedItemsKey++;
@@ -121,7 +125,7 @@ UBaseItem* UInventoryComponent::FindItem(class UBaseItem* Item) const
 }
 
 // takes in item class, then searches for it in the inventory array
-UBaseItem* UInventoryComponent::FindItemByClass(TSubclassOf <class UBaseItem> ItemClass) const
+UBaseItem* UInventoryComponent::FindItemByClass(TSubclassOf<class UBaseItem> ItemClass) const
 {
 	// loop through inventory
 	for (auto& InvItem : InventoryArray)
@@ -136,7 +140,7 @@ UBaseItem* UInventoryComponent::FindItemByClass(TSubclassOf <class UBaseItem> It
 	return nullptr;
 }
 
-UInventoryComponent::FindAllItemsByClass(TSubclassOf <class UBaseItem> ItemClass) const
+TArray<UBaseItem*> UInventoryComponent::FindAllItemsByClass(TSubclassOf<class UBaseItem> ItemClass) const
 {
 	// create an array to store all items that match the desired class
 	TArray<UBaseItem*> ItemsOfClass;
@@ -219,6 +223,41 @@ bool UInventoryComponent::ReplicateSubobjects(class UActorChannel *Channel, clas
 	return bWroteSomething;
 }
 
+// called when items in inventory change
+void UInventoryComponent::OnRep_InventoryArray() 
+{
+	// calls the delegate to update the UI	
+	OnInventoryUpdated.Broadcast();
+
+	// for (auto& Item : InventoryArray)
+	// {
+	// 	//On the client the world won't be set initially, so it set if not
+	// 	if (!Item->World)
+	// 	{
+	// 		OnItemAdded.Broadcast(Item);
+	// 		Item->World = GetWorld();
+	// 	}
+	// }
+}
+
+// original method, not sure if items is supposed to ref to the thing i renamed InventoryArray
+// called when items in inventory change
+// void UInventoryComponent::OnRep_Items() 
+// {
+// 	// calls the delegate to update the UI	
+// 	OnInventoryUpdated.Broadcast();
+
+// 	for (auto& Item : InventoryArray)
+// 	{
+// 		//On the client the world won't be set initially, so it set if not
+// 		if (!Item->World)
+// 		{
+// 			OnItemAdded.Broadcast(Item);
+// 			Item->World = GetWorld();
+// 		}
+// 	}
+// }
+
 UBaseItem* UInventoryComponent::AddItem(class UBaseItem* Item)
 {
 	// Check to force the server to add the item, not the client. Prevents cheating or improper added of items client side
@@ -232,19 +271,15 @@ UBaseItem* UInventoryComponent::AddItem(class UBaseItem* Item)
 		NewItem->AddedToInventory(this);
 		InventoryArray.Add(NewItem);
 		NewItem->MarkDirtyForReplication();
+		//OnItemAdded.Broadcast(NewItem);
+		OnRep_InventoryArray();
+
 
 		return NewItem;
 	}
 
 	// if the server isnt the one calling add item, return null
 	return nullptr;
-}
-
-// called when items in inventory change
-void UInventoryComponent::OnRep_Items() 
-{
-	// calls the delegate to update the UI	
-	OnInventoryUpdated.Broadcast();
 }
 
 FItemAddResult UInventoryComponent::TryAddItem_Internal(class UBaseItem* Item) 
@@ -291,47 +326,76 @@ FItemAddResult UInventoryComponent::TryAddItem_Internal(class UBaseItem* Item)
 					int32 ActualAddAmount = FMath::Min(AddAmount, StackMaxAddAmount);
 
 					FText ErrorText = LOCTEXT("InventoryErrorText", "Couldnt add all of the item to your inventory");
+				
+
+					// // This check is not implemented, character will just move slower and slower until they cannot move if too far overweight
+					// if (!FMath::IsNearlyZero(Item->Weight))
+					// {
+					// 	// find out how much can fit on that stack
+					// 	const int32 WeightMaxAddAmount = FMath::FloorToInt((WeightCapacity - GetCurrentWeight()) / Item->Weight);
+
+					// 	// takes the smaller of the two, add amount of stack max add amount
+					// 	ActualAddAmount = FMath::Min(AddAmount, WeightMaxAddAmount);
+
+					// 	if (ActualAddAmount < AddAmount)
+					// 	{
+					// 		ErrorText = Ftext::Format(LOCTEXT("InventoryTooMuchWeight", "Couldn't add entire stack of {ItemName} to inventory"), Item->ItemDisplayName);
+					// 	}
+					// }
+					// // the variables being checked are an exact repeat from above, probably an error in the video
+					// else if (ActualAddAmount < AddAmount)
+					// {
+					// 	ErrorText = Ftext::Format(LOCTEXT("InventoryCapacityFullText", "Couldn't add entire stack of {ItemName} to inventory, inventory is full"), Item->ItemDisplayName);
+					// }
+
+					if (ActualAddAmount <= 0)
+					{
+						return FItemAddResult::AddedNone(AddAmount, LOCTEXT("InventoryErrorText", "Couldnt add any of the item to your inventory"));
+					}
+
+					// updates the existing item with its currenty quantity added to the actual add amount
+					ExistingItem->SetQuantity(ExistingItem->GetQuantity() + ActualAddAmount);
+
+					// TODO: remove this and create code to make a new stack of the item unless all capacity is taken
+					// check that the new quantity isn't greater than the max stack size of the item
+					ensure(ExistingItem->GetQuantity() <= ExistingItem->MaxStackSize);
+
+					// again ActualAddAmount < AddAmount is a repeat from code commented out above, this will only work for quantity not weight
+					if (ActualAddAmount < AddAmount)
+					{
+						return FItemAddResult::AddedSome(AddAmount, ActualAddAmount, ErrorText);
+					}
+					else
+					{
+						return FItemAddResult::AddedAll(AddAmount);
+					}
 				}
-
-				// // This check is not implemented, character will just move slower and slower until they cannot move if too far overweight
-				// if (!FMath::IsNearlyZero(Item->Weight))
-				// {
-				// 	// find out how much can fit on that stack
-				// 	const int32 WeightMaxAddAmount = FMath::FloorToInt((WeightCapacity - GetCurrentWeight()) / Item->Weight);
-
-				// 	// takes the smaller of the two, add amount of stack max add amount
-				// 	ActualAddAmount = FMath::Min(AddAmount, WeightMaxAddAmount);
-
-				// 	if (ActualAddAmount < AddAmount)
-				// 	{
-				// 		ErrorText = Ftext::Format(LOCTEXT("InventoryTooMuchWeight", "Couldn't add entire stack of {ItemName} to inventory"), Item->ItemDisplayName);
-				// 	}
-				// }
-				// // the variables being checked are an exact repeat from above, probably an error in the video
-				// else if (ActualAddAmount < AddAmount)
-				// {
-				// 	ErrorText = Ftext::Format(LOCTEXT("InventoryCapacityFullText", "Couldn't add entire stack of {ItemName} to inventory, inventory is full"), Item->ItemDisplayName);
-				// }
-
-				if (ActualAddAmount <= 0)
+				else
 				{
-					return FItemAddResult::AddedNone(AddAmount, LOCTEXT("InventoryErrorText", "Couldnt add any of the item to your inventory");)
+					return FItemAddResult::AddedNone(AddAmount, FText::Format(LOCTEXT("InventoryFullStackSize", "{ItemName} already at max stack size"), Item->ItemDisplayName));
 				}
-
-				// updates the existing item with its currenty quantity added to the actual add amount
-				ExistingItem->SetQuantity(ExistingItem->GetQuantity() + ActualAddAmount);
-
-				// TODO: remove this and create code to make a new stack of the item unless all capacity is taken
-				// check that the new quantity isn't greater than the max stack size of the item
-				ensure(ExistingItem->GetQuantity() <= ExistingItem->MaxStackSize);
 			}
+			// if item doesnt already exist in inventory, add full stack
+			else
+			{
+				AddItem(Item);
+				return FItemAddResult::AddedAll(AddAmount);
+			}
+			
 		}
-
-		AddItem(Item);
-		return FItemAddResult::AddedAll(Item->Quantity);
+		// for non stacking items
+		else
+		{
+			// check for quantity of 1, add item
+			ensure(Item->GetQuantity() == 1);
+			AddItem(Item);
+			return FItemAddResult::AddedAll(AddAmount);
+		}	
 	}
 
-
+	// second check that add item isnt being run at the client end
+	check(false);
+	return FItemAddResult::AddedNone(-1, LOCTEXT("ErrorMessage", ""));
 }
 
 #undef LOCTEXT_NAMESPACE

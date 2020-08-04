@@ -2,6 +2,7 @@
 
 
 #include "BaseItem.h"
+#include "Trolled/Components/InventoryComponent.h"
 #include "Net/UnrealNetwork.h"
 
 // namespace used for language localization
@@ -83,7 +84,14 @@ void UBaseItem::AddedToInventory(class UInventoryComponent* Inventory)
 
 void UBaseItem::MarkDirtyForReplication() 
 {
-    
+    // mark object for replication
+    ++RepKey;
+
+    // mark inventory array for replication
+    if(OwningInventory)
+    {
+        ++OwningInventory->ReplicatedItemsKey;
+    }
 }
 
 #undef LOCTEXT_NAMESPACE
