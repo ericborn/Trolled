@@ -4,6 +4,9 @@
 #include "Net/UnrealNetwork.h"
 #include "Engine/ActorChannel.h"
 
+// namespace used for language localization
+#define LOCTEXT_NAMESPACE "Inventory"
+
 // Sets default values for this component's properties
 UInventoryComponent::UInventoryComponent()
 {
@@ -26,6 +29,45 @@ FItemAddResult UInventoryComponent::TryAddItemFromClass(TSubclassOf<class UBaseI
 	UBaseItem* Item = NewObject<UBaseItem>(GetOwner(), ItemClass);
 	Item->SetQuantity(Quantity);
 	return TryAddItem_Internal(Item);
+}
+
+int32 UInventoryComponent::ConsumeAll(Class UBaseItem* Item) 
+{
+	if (Item)
+	{
+		ConsumeQuantity(Item, Item->GetQuantity());
+	}
+	return 0;
+}
+
+// only consume if server calls the function
+int32 UInventoryComponent::ConsumeQuantity(Class UBaseItem* Item, const int32 Quantity) 
+{
+	if (GetOwner() && GetOwner()->HasAuthority() && Item)
+	{
+		// sets RemoveQuantity to the minimum needed to remove desired quantity from the currency quantity
+		const int32 RemoveQuantity = FMath::Min(Quantity, Item->GetQuantity());
+
+		// shouldnt be a negative amount of the item after the remove
+		ensure(!(Item->GetQuantity() - RemoveQuantity < 0));
+
+		// set the new quantity with the remove applied
+		Item->SetQuantity(Item->GetQuantity() - RemoveQuantity);
+
+		// if its 0, remove the item from inventory
+		if (Item->GetQuantity() <= 0)
+		{
+			RemoveItem(Item);
+		}
+		else
+		{
+			// forces client to update inventory, reflecting new item quantity
+			ClientRefreshInventory();
+		}
+		
+		return RemoveQuantity;
+	}
+	return 0;
 }
 
 // remove item from inventory
@@ -85,8 +127,7 @@ UBaseItem* UInventoryComponent::FindItemByClass(TSubclassOf <class UBaseItem> It
 	for (auto& InvItem : InventoryArray)
 	{
 		// if item is valid and item has the class we're looking for, return item
-		// ???missing parens on getclass???
-		if (InvItem && InvItem->GetClass == ItemClass)
+		if (InvItem && InvItem->GetClass() == ItemClass)
 		{
 			return InvItem;
 		}
@@ -113,19 +154,32 @@ UInventoryComponent::FindAllItemsByClass(TSubclassOf <class UBaseItem> ItemClass
 	return ItemsOfClass;
 }
 
+// uses GetStackWeight to multiply current stack size by individual item weight
 float UInventoryComponent::GetCurrentWeight() const
 {
-	
+	float Weight = 0.f;
+
+	for (auto& Item : InventoryArray)
+	{
+		if(Item)
+		{
+			Weight += Item->GetStackWeight();
+		}
+	}
+
+	return Weight;
 }
 
 void UInventoryComponent::SetWeightCapacity(const float NewWeightCapacity) 
 {
-	
+	WeightCapacity = NewWeightCapacity;
+	OnInventoryUpdated.Broadcast();
 }
 
 void UInventoryComponent::SetInventoryCapacity(const int32 NewInventoryCapacity) 
 {
-	
+	InventoryCapacity = NewInventoryCapacity;
+	OnInventoryUpdated.Broadcast();
 }
 
 // called when items in inventory change
@@ -195,7 +249,89 @@ void UInventoryComponent::OnRep_Items()
 
 FItemAddResult UInventoryComponent::TryAddItem_Internal(class UBaseItem* Item) 
 {
-	AddItem(Item);
-	return FItemAddResult::AddedAll(Item->Quantity);
+	if (GetOwner() && GetOwner()->HasAuthority())
+	{
+		// determine the quantity the character is trying to add
+		const int32 AddAmount = Item->GetQuantity();
+
+		// if current inventory + 1 is bigger than inventory capacity, character is full
+		if (InventoryArray.Num() + 1 > GetInventoryCapacity())
+		{
+			return FItemAddResult::AddedNone(AddAmount, LOCTEXT("InventoryCapacityFullText", "Inventory is full"));
+		}
+
+		// This check is not implemented, character will just move slower and slower until they cannot move if too far overweight
+		// if item weight is not nearly 0, don't require a weight check
+		// if (!FMath::IsNearlyZero(Item->Weight))
+		// {
+		// 	if (GetCurrentWeight() + Item-Weight > GetWeightCapacity())
+		// 	{
+		// 		return FItemAddResult::AddedNone(AddAmount, LOCTEXT("InventoryTooMuchWeight", "Carrying too much weight"));
+		// 	}
+		// }
+
+		// !!! Looks like the video has errors in it. This code stores the item quantity trying to be added in AddAmount,
+		// but then uses it as a check for weight, but never calculates a new value. 
+		// Weight section isn't being implemented, so probably not a problem
+		
+		// if item is stackable
+		if (Item->bStackable)
+		{
+			// check that the get quantity is less than or equal to the items max stack size
+			ensure(Item->GetQuantity() <= Item->MaxStackSize);
+
+			if (UBaseItem* ExistingItem = FindItem(Item))
+			{
+				if (ExistingItem->GetQuantity() < ExistingItem->MaxStackSize)
+				{
+					// find out the max amount that can fit on that stack
+					const int32 StackMaxAddAmount = ExistingItem->MaxStackSize - ExistingItem->GetQuantity();
+
+					// takes the smaller of the two, add amount of stack max add amount
+					int32 ActualAddAmount = FMath::Min(AddAmount, StackMaxAddAmount);
+
+					FText ErrorText = LOCTEXT("InventoryErrorText", "Couldnt add all of the item to your inventory");
+				}
+
+				// // This check is not implemented, character will just move slower and slower until they cannot move if too far overweight
+				// if (!FMath::IsNearlyZero(Item->Weight))
+				// {
+				// 	// find out how much can fit on that stack
+				// 	const int32 WeightMaxAddAmount = FMath::FloorToInt((WeightCapacity - GetCurrentWeight()) / Item->Weight);
+
+				// 	// takes the smaller of the two, add amount of stack max add amount
+				// 	ActualAddAmount = FMath::Min(AddAmount, WeightMaxAddAmount);
+
+				// 	if (ActualAddAmount < AddAmount)
+				// 	{
+				// 		ErrorText = Ftext::Format(LOCTEXT("InventoryTooMuchWeight", "Couldn't add entire stack of {ItemName} to inventory"), Item->ItemDisplayName);
+				// 	}
+				// }
+				// // the variables being checked are an exact repeat from above, probably an error in the video
+				// else if (ActualAddAmount < AddAmount)
+				// {
+				// 	ErrorText = Ftext::Format(LOCTEXT("InventoryCapacityFullText", "Couldn't add entire stack of {ItemName} to inventory, inventory is full"), Item->ItemDisplayName);
+				// }
+
+				if (ActualAddAmount <= 0)
+				{
+					return FItemAddResult::AddedNone(AddAmount, LOCTEXT("InventoryErrorText", "Couldnt add any of the item to your inventory");)
+				}
+
+				// updates the existing item with its currenty quantity added to the actual add amount
+				ExistingItem->SetQuantity(ExistingItem->GetQuantity() + ActualAddAmount);
+
+				// TODO: remove this and create code to make a new stack of the item unless all capacity is taken
+				// check that the new quantity isn't greater than the max stack size of the item
+				ensure(ExistingItem->GetQuantity() <= ExistingItem->MaxStackSize);
+			}
+		}
+
+		AddItem(Item);
+		return FItemAddResult::AddedAll(Item->Quantity);
+	}
+
+
 }
 
+#undef LOCTEXT_NAMESPACE

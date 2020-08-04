@@ -106,6 +106,10 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FItemAddResult TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
 
+	// removes all or some quantity away from an item or the item itself when quantity reaches 0.
+	int32 ConsumeAll(Class UBaseItem* Item);
+	int32 ConsumeQuantity(Class UBaseItem* Item, const int32 Quantity);
+
 	// remove item from inventory
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	bool RemoveItem(class UBaseItem* Item);
