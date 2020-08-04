@@ -16,7 +16,7 @@ public:
 	APickupBase();
 
 	// The item pickup that sits in the world. Initialized on BeginPlay and when a player drops it from inventory
-	void InitializePickup(const, TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
+	void InitializePickup(const TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
 
 	// helper to align the pickup mesh with the grounds rotation, declared in cpp but implemented in BP's
 	UFUNCTION(BlueprintImplementableEvent)
@@ -45,7 +45,7 @@ protected:
 
 	// pickup items are replicated by the server to all players so they know where/how much of an item exists in the world
 	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
-	virtual bool ReplicatedSubobjects(class UActorChannel *Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
+	virtual bool ReplicateSubobjects(class UActorChannel *Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) override;
 
 // allows changing items while the game is in the editor, when published the ability to modify items is removed
 #if WITH_EDITOR

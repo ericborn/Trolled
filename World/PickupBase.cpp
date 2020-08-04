@@ -4,6 +4,8 @@
 #include "PickupBase.h"
 #include "Trolled/Items/BaseItem.h"
 #include "Net/UnrealNetwork.h"
+#include "Trolled/MainCharacter.h"
+#include "Trolled/Player/TrolledPlayerController.h"
 #include "Components/StaticMeshComponent.h"
 #include "Trolled/Components/InteractionComponent.h"
 #include "Trolled/Components/InventoryComponent.h"
@@ -22,14 +24,14 @@ APickupBase::APickupBase()
 	SetRootComponent(PickupMesh);
 
 	// add interaction component to the pickup item base
-	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>("PickupInteractionComponent")
+	InteractionComponent = CreateDefaultSubobject<UInteractionComponent>("PickupInteractionComponent");
 
 	// set default interaction time, distance, pickup, action text, functionality for when the pickup is taken, bind interaction to the static mesh
 	InteractionComponent->InteractionTime = 0.1f;
 	InteractionComponent->InteractionDistance = 200.f;
 	InteractionComponent->InteractableNameText = FText::FromString("Pickup");
 	InteractionComponent->InteractableActionText = FText::FromString("Take");
-	InteractionComponent->OnInteract.AddDynamic(this, &APickup::OnTakePickup);
+	InteractionComponent->OnInteract.AddDynamic(this, &APickupBase::OnTakePickup);
 	InteractionComponent->SetupAttachment(PickupMesh);
 
 	// enable replication
@@ -37,11 +39,11 @@ APickupBase::APickupBase()
 }
 
 // create the pickups, set qty, rep item and mark dirty in the event a player drops an item back into the world
-void APickupBase::InitializePickup(const, TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity) 
+void APickupBase::InitializePickup(const TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity) 
 {
 	if (HasAuthority() && ItemClass && Quantity > 0)
 	{
-		Item = NewObject<UItem>(this, ItemClass);
+		Item = NewObject<UBaseItem>(this, ItemClass);
 		Item->SetQuantity(Quantity);
 
 		OnRep_Item();
@@ -58,7 +60,7 @@ void APickupBase::OnRep_Item()
 		InteractionComponent->InteractableNameText = Item->ItemDisplayName;
 
 		// binds clients to the delegate for UI refresh when quantities change
-		Item->OnItemModified.AddDynamic(this, &APickup::OnItemModified);
+		Item->OnItemModified.AddDynamic(this, &APickupBase::OnItemModified);
 	}
 
 	// if properties are changed, refresh widget
@@ -83,7 +85,7 @@ void APickupBase::BeginPlay()
 	if (HasAuthority() && ItemTemplate && bNetStartup)
 	{
 		// spawn the pickups with desired class and quantity
-		IntializePickup(ItemTemplate->GetClass(), ItemTemplate->GetQuantity());
+		InitializePickup(ItemTemplate->GetClass(), ItemTemplate->GetQuantity());
 	}
 
 	// if not at startup, indicating a player dropped an item, align pickup with the ground
@@ -104,10 +106,10 @@ void APickupBase::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifet
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// replicates and makes the server manage the quantity value
-    DOREPLIFETIME(UPickupBase, BaseItem);
+    DOREPLIFETIME(APickupBase, Item);
 }
 
-bool APickupBase::ReplicatedSubobjects(class UActorChannel *Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) 
+bool APickupBase::ReplicateSubobjects(class UActorChannel *Channel, class FOutBunch *Bunch, FReplicationFlags *RepFlags) 
 {
 	// true when a modification has been made to actor channel
 	bool bWroteSomething = Super::ReplicateSubobjects(Channel, Bunch, RepFlags);
@@ -131,7 +133,7 @@ bool APickupBase::ReplicatedSubobjects(class UActorChannel *Channel, class FOutB
     FName PropertyName = (PropertyChangedEvent.Property != NULL) ? PropertyChangedEvent.Property->GetFName() : NAME_None;
 
 	// If a new pickup is selected in the property editor, change the mesh to reflect the new item
-    if (PropertyName == GET_MEMBER_NAME_CHECKED(UPickupBase, ItemTemplate))
+    if (PropertyName == GET_MEMBER_NAME_CHECKED(APickupBase, ItemTemplate))
     {
 		if (ItemTemplate)
 		{
@@ -163,7 +165,7 @@ void APickupBase::OnTakePickup(class AMainCharacter* Taker)
 			// if actual amount taken was less than total quantity, set quantity for pickup to new value
 			if (AddResult.ActualAmountGiven < Item->GetQuantity())
 			{
-				Item->SetQuantity(Item->GetQuantity()) - AddResult.ActualAmountGiven);
+				Item->SetQuantity(Item->GetQuantity() - AddResult.ActualAmountGiven);
 			}
 			// if it was more than or equal to total pickup quantity, destroy the pickup from the world
 			else if (AddResult.ActualAmountGiven >= Item->GetQuantity())
