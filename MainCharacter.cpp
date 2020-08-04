@@ -5,9 +5,10 @@
 #include "Camera/CameraComponent.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "Components/SkeletalMeshComponent.h"
+#include "Trolled/Components/InventoryComponent.h"
 #include "Components/InteractionComponent.h"
 
-// Sets default values
+// Constrcutor of main character, set default values here
 AMainCharacter::AMainCharacter()
 {
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
@@ -57,6 +58,11 @@ AMainCharacter::AMainCharacter()
 	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>("BackpackMesh");
 	BackpackMesh->SetupAttachment(GetMesh());
 	BackpackMesh->SetMasterPoseComponent(GetMesh());
+
+	// create inventory component and set default capacities
+	PlayerInventory = CreateDefaultSubobject<UInventoryComponent>("PlayerInventory");
+	PlayerInventory->SetInventoryCapacity(20);
+	PlayerInventory->SetWeightCapacity(60.f);
 
 	// check every 0.2, max interaction distance 10m
 	InteractionCheckFrequency = 0.2f;

@@ -44,6 +44,9 @@ public:
 	// Sets default values for this character's properties
 	AMainCharacter();
 
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	class UInventoryComponent* PlayerInventory;
+
 	// create camera
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	class UCameraComponent* CameraComponent;
