@@ -7,6 +7,9 @@
 #include "Components/ActorComponent.h"
 #include "InventoryComponent.generated.h"
 
+// Delegate used to update the inventory UI anytime items are modified
+DECLARE_DYNAMIC_MULTICAST_DELEGATE(FOnInventoryUpdated);
+
 // enum for selecting if the add item operation was not, partially or fully successful
 UENUM(BlueprintType)
 enum class EItemAddResult : uint8
@@ -103,19 +106,59 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "Inventory")
 	FItemAddResult TryAddItemFromClass(TSubclassOf<class UBaseItem> ItemClass, const int32 Quantity);
 
+	// remove item from inventory
+	UFUNCTION(BlueprintCallable, Category = "Inventory")
+	bool RemoveItem(class UBaseItem* Item);
+
+
+	// item search functions
+	// return true if player has a given amount of an item
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	bool HasItemQuantity(TSubclassOf <class UBaseItem> ItemClass, const int32 Quantity = 1) const;
+
+	// return first item with the same class as a given item
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UBaseItem* FindItem(class UBaseItem* Item) const;
+
+	// return first item with the same class as ItemClass
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	UBaseItem* FindItemByClass(TSubclassOf <class UBaseItem> ItemClass) const;
+
+	// return all item with the same class as ItemClass
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	TArray<UBaseItem*> FindAllItemsByClass(TSubclassOf <class UBaseItem> ItemClass) const;
+
+
+	// getters and setters for weight and inventory slots
+	// get current weight of the inventory. To check amount of items in inventroy use GetItems().Num
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	float GetCurrentWeight() const;
+
+	// set max weight capacity
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	void SetWeightCapacity(const float NewWeightCapacity);
+
+	// set max inventory capacity
+	UFUNCTION(BlueprintPure, Category = "Inventory")
+	void SetInventoryCapacity(const int32 NewInventoryCapacity);
+
+
 	// used for enabling blueprints(UI) to use these functions
-	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	UFUNCTION(BlueprintPure, Category = "Inventory")
 	FORCEINLINE float GetWeightCapacity() const { return WeightCapacity; };
 	
-	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	UFUNCTION(BlueprintPure, Category = "Inventory")
 	FORCEINLINE int32 GetInventoryCapacity() const { return InventoryCapacity; };
 	
-	UFUNCTION(BlueprintPure,  Category = "Inventory")
+	UFUNCTION(BlueprintPure, Category = "Inventory")
 	FORCEINLINE TArray<class UBaseItem*> GetItems() const { return InventoryArray; };
 
-protected:
-	// Called when the game starts
-	virtual void BeginPlay() override;
+	// forces client to refresh inventory
+	UFUNCTION(Client, Reliable)
+	void ClientRefreshInventory();
+
+	UPROPERTY(BlueprintAssignable, Category = "Inventory")
+	FOnInventoryUpdated OnInventoryUpdated;
 
 protected:
 	// array for the current inventory, replicated to server
@@ -136,6 +179,10 @@ protected:
 
 
 private:
+
+	// Dont call InventoryArray.Add() directly, use this function as it handles ownership and replication
+	UBaseItem* AddItem(class UBaseItem* Item)
+
 	// used to refresh UI when items gained, used, equipped, etc
 	UFUNCTION()
 	void OnRep_Items();
@@ -146,5 +193,6 @@ private:
 
 	// Internal, non-BP exposed add item function. Not used directly, call TryAddItem() or TryAddItemFromClass()
 	FItemAddResult TryAddItem_Internal(class UBaseItem* Item);
+	
 		
 };
