@@ -32,21 +32,38 @@ public:
 
 	UEquippableItem();
 
-	// slot the item attaches to
 	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Equippables")
 	EEquippableSlot Slot;
 
-	// used when the EquipStatusChanged is replicated up to the server
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> & OutLifetimeProps) const override;
+
+	// override for how equipment is used
+	virtual void Use(class ASurvivalCharacter* Character) override;
+
+	// equip/unequip equipment
+	UFUNCTION(BlueprintCallable, Category = "Equippables")
+	virtual bool Equip(class ASurvivalCharacter* Character);
+
+	UFUNCTION(BlueprintCallable, Category = "Equippables")
+	virtual bool UnEquip(class ASurvivalCharacter* Character);
+
+	// override show/hide and added to inventory for equipment
+	virtual bool ShouldShowInInventory() const override;
+	virtual void AddedToInventory(class UInventoryComponent* Inventory) override;
+
+	// track if something is equipped
+	UFUNCTION(BlueprintPure, Category = "Equippables")
+	bool IsEquipped() { return bEquipped; };
+
+	// Call this on the server to equip the item
+	void SetEquipped(bool bNewEquipped);
 
 protected:
 
-	// value for the item being equipped or not
 	UPROPERTY(ReplicatedUsing = EquipStatusChanged)
 	bool bEquipped;
 
-	// called when an item is equipped or unequipped, replicated from client up to server, 
-	// then server down to clients so all clients can see each others clothing
 	UFUNCTION()
 	void EquipStatusChanged();
+
 };
