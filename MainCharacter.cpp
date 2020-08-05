@@ -4,6 +4,7 @@
 #include "MainCharacter.h"
 #include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
+#include "Trolled/Player/TrolledPlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
 #include "GameFramework/PlayerState.h"
 #include "GameFramework/SpringArmComponent.h"
@@ -118,6 +119,25 @@ void AMainCharacter::Tick(float DeltaTime)
 		// }
 	}
 	
+}
+
+void AMainCharacter::Restart() 
+{
+	Super::Restart();
+
+	// if the controller
+	if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
+	{
+		// from final code
+		// // Show gameplay widget again since it was removed when player died
+		// if (ASurvivalHUD* HUD = Cast<ASurvivalHUD>(PC->GetHUD()))
+		// {
+		// 	HUD->CreateGameplayWidget();
+		// }
+		
+		// from video
+		PC->ShowIngameUI();
+	}
 }
 
 void AMainCharacter::PerformInteractionCheck() 

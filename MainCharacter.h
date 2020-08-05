@@ -99,6 +99,9 @@ protected:
 	// Tick function, called every frame
 	virtual void Tick(float DeltaTime) override;
 
+	// call when a player restarts or respawns, used to remove death screen and reapply main HUD UI
+	virtual void Restart() override;
+
 	// how often in seconds to check for an interactable object. 0 means every tick
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")
 	float InteractionCheckFrequency;

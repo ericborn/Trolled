@@ -2,4 +2,17 @@
 
 
 #include "TrolledPlayerController.h"
+#include "Trolled/MainCharacter.h"
+#include "Kismet/GameplayStatics.h"
+
+ATrolledPlayerController::ATrolledPlayerController() 
+{
+    
+}
+
+void ATrolledPlayerController::ClientShowNotification_Implementation(const FText& Message) 
+{
+    ShowNotification(Message);
+}
+
 
