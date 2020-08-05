@@ -140,28 +140,6 @@ protected:
 	FTimerHandle TimerHandle_Interact;
 
 public:
-
-	// equip and unequip item
-	bool EquipItem(class UEquippableItem* Item);
-	bool UnEquipItem(class UEquippableItem* Item);
-
-	// These should never be called directly - UGearItem and UWeaponItem call these on top of EquipItem
-	void EquipGear(class UGearItem* Gear);
-	void UnEquipGear(const EEquippableSlot Slot);
-
-	// called to update the inventory UI when an item is equipped or unequipped
-	UPROPERTY(BlueprintAssignable, Category = "Items")
-	FOnEquippedItemsChanged OnEquippedItemsChanged;
-
-	// returns skeletal mesh component when a lot is passed in
-	UFUNCTION(BlueprintPure)
-	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquippableSlot Slot);
-
-	// helper function that exposes the equipment map to see whats currently equipped
-	UFUNCTION(BlueprintPure)
-	FORCEINLINE TMap<EEquippableSlot, UEquippableItem*> GetEquippedItems() const { return EquippedItems; }
-
-public:
 	
 	// store if currently interacting
 	bool IsInteracting() const;
@@ -190,12 +168,36 @@ public:
 	UPROPERTY(EditDefaultsOnly, Category = "Items")
 	TSubclassOf<class APickupBase> PickupClass;
 
+public:
+
+	// equip and unequip item
+	bool EquipItem(class UEquippableItem* Item);
+	bool UnEquipItem(class UEquippableItem* Item);
+
+	// These should never be called directly - UGearItem and UWeaponItem call these on top of EquipItem
+	void EquipGear(class UGearItem* Gear);
+	void UnEquipGear(const EEquippableSlot Slot);
+
+	// called to update the inventory UI when an item is equipped or unequipped
+	UPROPERTY(BlueprintAssignable, Category = "Items")
+	FOnEquippedItemsChanged OnEquippedItemsChanged;
+
+	// returns skeletal mesh component when a slot is passed in
+	UFUNCTION(BlueprintPure)
+	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquippableSlot Slot);
+
+	// helper function that exposes the equipment map to see whats currently equipped
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE TMap<EEquippableSlot, UEquippableItem*> GetEquippedItems() const { return EquippedItems; }
+
 protected:
 	
 	// Creates a map of current equipped items, allows for quick access of equipped items
 	UPROPERTY(VisibleAnywhere, Category = "Items")
 	TMap<EEquippableSlot, UEquippableItem*> EquippedItems;
-	
+
+
+protected:
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 

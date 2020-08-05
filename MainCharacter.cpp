@@ -44,7 +44,7 @@ AMainCharacter::AMainCharacter()
 	VestMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Vest, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("VestMesh")));
 	HandsMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Hands, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandsMesh")));
 	BackpackMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Backpack, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh")));
-
+	
 	// loop through PlayerMeshes which contains all of the slots
 	// for each of the slots, use the head mesh attachment and master pose
 	for (auto& Kvp : PlayerMeshes)
