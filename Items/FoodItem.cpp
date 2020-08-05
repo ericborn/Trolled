@@ -20,6 +20,9 @@ UFoodItem::UFoodItem()
 void UFoodItem::Use(class AMainCharacter* Character) 
 {
     // change health, stamina, hunger and thirst here
+    
+    // print to log
+    //UE_LOG(LogTemp, Warning, TEXT("Ate food"));
 }
 
 #undef LOCTEXT_NAMESPACE
