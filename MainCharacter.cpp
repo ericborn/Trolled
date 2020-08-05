@@ -12,6 +12,7 @@
 #include "Components/CapsuleComponent.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Components/InteractionComponent.h"
+#include "Trolled/Items/EquippableItem.h"
 #include "Trolled/World/PickupBase.h"
 
 // Constrcutor of main character, set default values here
@@ -33,37 +34,29 @@ AMainCharacter::AMainCharacter()
 	//follows the control rotation which comes from the mouse input
 	CameraComponent->bUsePawnControlRotation = true;
 
-	// create skeletal components for each area of the body then attach 
-	// to the root using getmesh, which returns the head
-	HelmetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HelmetMesh");
-	HelmetMesh->SetupAttachment(GetMesh());
-	
-	// sets this mesh to follow the pose from the root node, which is the head
-	HelmetMesh->SetMasterPoseComponent(GetMesh());
+	// adds the EEquippableSlot to the skeletal mesh so items can be attached in each slot
+	HelmetMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Helmet, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HelmetMesh")));
+	ChestMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Chest, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("ChestMesh")));
+	LegsMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Legs, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("LegsMesh")));
+	FeetMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Feet, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("FeetMesh")));
+	VestMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Vest, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("VestMesh")));
+	HandsMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Hands, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("HandsMesh")));
+	BackpackMesh = PlayerMeshes.Add(EEquippableSlot::EIS_Backpack, CreateDefaultSubobject<USkeletalMeshComponent>(TEXT("BackpackMesh")));
 
-	ChestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("ChestMesh");
-	ChestMesh->SetupAttachment(GetMesh());
-	ChestMesh->SetMasterPoseComponent(GetMesh());
+	// loop through PlayerMeshes which contains all of the slots
+	// for each of the slots, use the head mesh attachment and master pose
+	for (auto& Kvp : PlayerMeshes)
+	{
+		USkeletalMeshComponent* MeshComponent = Kvp.Value;
+		MeshComponent->SetupAttachment(GetMesh());
+		MeshComponent->SetMasterPoseComponent(GetMesh());
+	}
 
-	LegsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("LegsMesh");
-	LegsMesh->SetupAttachment(GetMesh());
-	LegsMesh->SetMasterPoseComponent(GetMesh());
+	// add head slot last since the head is the root and all other objects need to be attached to it
+	PlayerMeshes.Add(EEquippableSlot::EIS_Head, GetMesh());
 
-	FeetMesh = CreateDefaultSubobject<USkeletalMeshComponent>("FeetMesh");
-	FeetMesh->SetupAttachment(GetMesh());
-	FeetMesh->SetMasterPoseComponent(GetMesh());
-
-	VestMesh = CreateDefaultSubobject<USkeletalMeshComponent>("VestMesh");
-	VestMesh->SetupAttachment(GetMesh());
-	VestMesh->SetMasterPoseComponent(GetMesh());
-
-	HandsMesh = CreateDefaultSubobject<USkeletalMeshComponent>("HandsMesh");
-	HandsMesh->SetupAttachment(GetMesh());
-	HandsMesh->SetMasterPoseComponent(GetMesh());
-
-	BackpackMesh = CreateDefaultSubobject<USkeletalMeshComponent>("BackpackMesh");
-	BackpackMesh->SetupAttachment(GetMesh());
-	BackpackMesh->SetMasterPoseComponent(GetMesh());
+	// set head to be invisible to self
+	GetMesh()->SetOwnerNoSee(true);
 
 	// create inventory component and set default capacities
 	PlayerInventory = CreateDefaultSubobject<UInventoryComponent>("PlayerInventory");
@@ -284,6 +277,80 @@ void AMainCharacter::Interact()
 		Interactable->Interact(this);
 	}
 	
+}
+
+bool ASurvivalCharacter::EquipItem(class UEquippableItem* Item)
+{
+	// adds the item to the map of equipped items, taking in the slot as the key 
+	// and item itself as value. Broadcast to the delegate to update UI
+	EquippedItems.Add(Item->Slot, Item);
+	OnEquippedItemsChanged.Broadcast(Item->Slot, Item);
+	return true;
+}
+
+bool ASurvivalCharacter::UnEquipItem(class UEquippableItem* Item)
+{
+	// check item is valid
+	if (Item)
+	{
+		// check slot
+		if (EquippedItems.Contains(Item->Slot))
+		{
+			// check item is equipped
+			if (Item == *EquippedItems.Find(Item->Slot))
+			{
+				// remove from the map, broadcast the change
+				EquippedItems.Remove(Item->Slot);
+				OnEquippedItemsChanged.Broadcast(Item->Slot, nullptr);
+				return true;
+			}
+		}
+	}
+	return false;
+}
+
+void ASurvivalCharacter::EquipGear(class UGearItem* Gear)
+{
+	if (USkeletalMeshComponent* GearMesh = GetSlotSkeletalMeshComponent(Gear->Slot))
+	{
+		GearMesh->SetSkeletalMesh(Gear->Mesh);
+		GearMesh->SetMaterial(GearMesh->GetMaterials().Num() - 1, Gear->MaterialInstance);
+	}
+}
+
+void ASurvivalCharacter::UnEquipGear(const EEquippableSlot Slot)
+{
+	if (USkeletalMeshComponent* EquippableMesh = GetSlotSkeletalMeshComponent(Slot))
+	{
+		if (USkeletalMesh* BodyMesh = *NakedMeshes.Find(Slot))
+		{
+			EquippableMesh->SetSkeletalMesh(BodyMesh);
+
+			//Put the materials back on the body mesh (Since gear may have applied a different material)
+			for (int32 i = 0; i < BodyMesh->Materials.Num(); ++i)
+			{
+				if (BodyMesh->Materials.IsValidIndex(i))
+				{
+					EquippableMesh->SetMaterial(i, BodyMesh->Materials[i].MaterialInterface);
+				}
+			}
+		}
+		else
+		{
+			//For some gear like backpacks, there is no naked mesh
+			EquippableMesh->SetSkeletalMesh(nullptr);
+		}
+	}
+}
+
+class USkeletalMeshComponent* AMainCharacter::GetSlotSkeletalMeshComponent(const EEquippableSlot Slot) 
+{
+	// if palyer mesh has a slot, return skeletal mesh component
+	if (PlayerMeshes.Contains(Slot))
+	{
+		return *PlayerMeshes.Find(Slot);
+	}
+	return nullptr;
 }
 
 // check if timer is active

@@ -35,6 +35,9 @@ struct FInteractionData
 	bool bInteractHeld;
 };
 
+// delegate for updating UI when an item is equipped, takes slot and item
+DECLARE_DYNAMIC_MULTICAST_DELEGATE_TwoParams(FOnEquippedItemsChanged, const EEquippableSlot, Slot, const UEquippableItem*, Item);
+
 UCLASS()
 class TROLLED_API AMainCharacter : public ACharacter
 {
@@ -43,6 +46,10 @@ class TROLLED_API AMainCharacter : public ACharacter
 public:
 	// Sets default values for this character's properties
 	AMainCharacter();
+
+	// The map uses a key which maps to a skeletal mesh component so the equipment goes to the correct slot
+	UPROPERTY(BlueprintReadOnly, Category = Mesh)
+	TMap<EEquippableSlot, USkeletalMeshComponent*> PlayerMeshes;
 
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	class UInventoryComponent* PlayerInventory;
@@ -129,6 +136,25 @@ protected:
 	FTimerHandle TimerHandle_Interact;
 
 public:
+
+	// equip and unequip item
+	bool EquipItem(class UEquippableItem* Item);
+	bool UnEquipItem(class UEquippableItem* Item);
+
+	// These should never be called directly - UGearItem and UWeaponItem call these on top of EquipItem
+	void EquipGear(class UGearItem* Gear);
+	void UnEquipGear(const EEquippableSlot Slot);
+
+	// called to update the inventory UI when an item is equipped or unequipped
+	UPROPERTY(BlueprintAssignable, Category = "Items")
+	FOnEquippedItemsChanged OnEquippedItemsChanged;
+
+	// returns skeletal mesh component when a lot is passed in
+	UFUNCTION(BlueprintPure)
+	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquippableSlot Slot);
+
+
+public:
 	
 	// store if currently interacting
 	bool IsInteracting() const;
@@ -158,6 +184,11 @@ public:
 	TSubclassOf<class APickupBase> PickupClass;
 
 protected:
+	
+	// Creates a map of current equipped items, allows for quick access of equipped items
+	UPROPERTY(VisibleAnywhere, Category = "Items")
+	TMap<EEquippableSlot, UEquippableItem*> EquippedItems;
+	
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 
