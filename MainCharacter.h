@@ -153,6 +153,9 @@ public:
 	UFUNCTION(BlueprintPure)
 	class USkeletalMeshComponent* GetSlotSkeletalMeshComponent(const EEquippableSlot Slot);
 
+	// helper function that exposes the equipment map to see whats currently equipped
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE TMap<EEquippableSlot, UEquippableItem*> GetEquippedItems() const { return EquippedItems; }
 
 public:
 	
