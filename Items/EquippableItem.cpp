@@ -60,11 +60,27 @@ bool UEquippableItem::UnEquip(class AMainCharacter* Character)
 	return false;
 }
 
-bool UEquippableItem::ShouldShowInInventory() const
+bool UEquippableItem::ShouldShowInInventory() const 
 {
-	// when taking off gear, should show back up in inventory
+    // when taking off gear, should show back up in inventory
     return !bEquipped;
 }
+
+// void UEquippableItem::AddedToInventory(class UInventoryComponent* Inventory)
+// {
+// 	//If the player looted an item don't equip it
+// 	if (AMainCharacter* Character = Cast<AMainCharacter>(Inventory->GetOwner()))
+// 	{
+// 		if (Character && !Character->IsLooting())
+// 		{
+// 			/**If we take an equippable, and don't have an item equipped at its slot, then auto equip it*/
+// 			if (!Character->GetEquippedItems().Contains(Slot))
+// 			{
+// 				SetEquipped(true);
+// 			}
+// 		}
+// 	}
+// }
 
 void UEquippableItem::SetEquipped(bool bNewEquipped)
 {

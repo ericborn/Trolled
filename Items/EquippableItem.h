@@ -38,18 +38,18 @@ public:
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> & OutLifetimeProps) const override;
 
 	// override for how equipment is used
-	virtual void Use(class ASurvivalCharacter* Character) override;
+	virtual void Use(class AMainCharacter* Character) override;
 
 	// equip/unequip equipment
 	UFUNCTION(BlueprintCallable, Category = "Equippables")
-	virtual bool Equip(class ASurvivalCharacter* Character);
+	virtual bool Equip(class AMainCharacter* Character);
 
 	UFUNCTION(BlueprintCallable, Category = "Equippables")
-	virtual bool UnEquip(class ASurvivalCharacter* Character);
+	virtual bool UnEquip(class AMainCharacter* Character);
 
 	// override show/hide and added to inventory for equipment
 	virtual bool ShouldShowInInventory() const override;
-	virtual void AddedToInventory(class UInventoryComponent* Inventory) override;
+	//virtual void AddedToInventory(class UInventoryComponent* Inventory) override;
 
 	// track if something is equipped
 	UFUNCTION(BlueprintPure, Category = "Equippables")

@@ -13,6 +13,8 @@
 #include "Trolled/Components/InventoryComponent.h"
 #include "Components/InteractionComponent.h"
 #include "Trolled/Items/EquippableItem.h"
+#include "Trolled/Items/GearItem.h"
+#include "Materials/MaterialInstance.h"
 #include "Trolled/World/PickupBase.h"
 
 // Constrcutor of main character, set default values here
@@ -78,6 +80,12 @@ AMainCharacter::AMainCharacter()
 void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// stores values for a character with no armor equipped, so when removing armor later it can return to this
+	for (auto& PlayerMesh : PlayerMeshes)
+	{
+		NakedMeshes.Add(PlayerMesh.Key, PlayerMesh.Value->SkeletalMesh);
+	}
 	
 }
 
@@ -279,7 +287,7 @@ void AMainCharacter::Interact()
 	
 }
 
-bool ASurvivalCharacter::EquipItem(class UEquippableItem* Item)
+bool AMainCharacter::EquipItem(class UEquippableItem* Item)
 {
 	// adds the item to the map of equipped items, taking in the slot as the key 
 	// and item itself as value. Broadcast to the delegate to update UI
@@ -288,7 +296,7 @@ bool ASurvivalCharacter::EquipItem(class UEquippableItem* Item)
 	return true;
 }
 
-bool ASurvivalCharacter::UnEquipItem(class UEquippableItem* Item)
+bool AMainCharacter::UnEquipItem(class UEquippableItem* Item)
 {
 	// check item is valid
 	if (Item)
@@ -309,24 +317,29 @@ bool ASurvivalCharacter::UnEquipItem(class UEquippableItem* Item)
 	return false;
 }
 
-void ASurvivalCharacter::EquipGear(class UGearItem* Gear)
+void AMainCharacter::EquipGear(class UGearItem* Gear)
 {
+	// find slot of gear being equipped and which skeletal mesh comp it attaches to
 	if (USkeletalMeshComponent* GearMesh = GetSlotSkeletalMeshComponent(Gear->Slot))
 	{
+		// set new mesh/texture from gear
 		GearMesh->SetSkeletalMesh(Gear->Mesh);
 		GearMesh->SetMaterial(GearMesh->GetMaterials().Num() - 1, Gear->MaterialInstance);
 	}
 }
 
-void ASurvivalCharacter::UnEquipGear(const EEquippableSlot Slot)
+void AMainCharacter::UnEquipGear(const EEquippableSlot Slot)
 {
+	// find mesh component to unequip from
 	if (USkeletalMeshComponent* EquippableMesh = GetSlotSkeletalMeshComponent(Slot))
 	{
+		// find naked body mesh stored at begin play
 		if (USkeletalMesh* BodyMesh = *NakedMeshes.Find(Slot))
 		{
+			// set back to naked mesh
 			EquippableMesh->SetSkeletalMesh(BodyMesh);
 
-			//Put the materials back on the body mesh (Since gear may have applied a different material)
+			// reset the materials back on the naked body mesh
 			for (int32 i = 0; i < BodyMesh->Materials.Num(); ++i)
 			{
 				if (BodyMesh->Materials.IsValidIndex(i))

@@ -47,6 +47,10 @@ public:
 	// Sets default values for this character's properties
 	AMainCharacter();
 
+	// Map that stores default mesh to have equipped if we dont have an item equipped - ie the bare skin meshes
+	UPROPERTY(BlueprintReadOnly, Category = Mesh)
+	TMap<EEquippableSlot, USkeletalMesh*> NakedMeshes;
+
 	// The map uses a key which maps to a skeletal mesh component so the equipment goes to the correct slot
 	UPROPERTY(BlueprintReadOnly, Category = Mesh)
 	TMap<EEquippableSlot, USkeletalMeshComponent*> PlayerMeshes;
