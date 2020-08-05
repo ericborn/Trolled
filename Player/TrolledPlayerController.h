@@ -22,23 +22,24 @@ public:
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowNotification(const FText& Message);
 	
-	// server side call for notifications 
+	// Blueprint Implementable allows functions to be constructed here
+	// but implemented in BP's so the two can both control the functions
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowNotification(const FText& Message);
 
-	// 
+	// show the death screen with the player that killed this player
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowDeathScreen(class AMainCharacter* Killer);
 
-	// 
+	// show the loot menu UI
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowLootMenu(const class UInventoryComponent* LootSource);
 
-	//
+	// show the main game UI
 	UFUNCTION(BlueprintImplementableEvent)
 	void ShowIngameUI();
 
-	//
+	// hide the loot menu UI
 	UFUNCTION(BlueprintImplementableEvent)
 	void HideLootMenu();
 
