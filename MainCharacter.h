@@ -55,9 +55,18 @@ public:
 	UPROPERTY(BlueprintReadOnly, Category = Mesh)
 	TMap<EEquippableSlot, USkeletalMeshComponent*> PlayerMeshes;
 
+	// add inventory component to the character
 	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
 	class UInventoryComponent* PlayerInventory;
 
+	// allow other players to loot character after death
+	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Components")
+	class UInteractionComponent* LootPlayerInteraction;
+
+	// create springarm, responsible for keeping 3rd person camera from clipping into walls
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category = Camera, meta = (AllowPrivateAccess = "true"))
+	class USpringArmComponent* SpringArmComponent;
+	
 	// create camera
 	UPROPERTY(EditAnywhere, Category = "Camera")
 	class UCameraComponent* CameraComponent;
@@ -322,6 +331,23 @@ public:
 	void OnThirstModified(const float ThirstDelta);
 
 protected:
+	
+	// Called when killed by the player, or killed by something else like the environment
+	void Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser);
+	void KilledByPlayer(struct FDamageEvent const& DamageEvent, const class AMainCharacter* EventInstigator, const AActor* DamageCauser);
+
+	// set when someone is killed by someone else, repped to everyone else by the server
+	UPROPERTY(ReplicatedUsing = OnRep_Killer)
+	class AMainCharacter* Killer;
+
+	// replicate who killed the player
+	UFUNCTION()
+	void OnRep_Killer();
+
+	// bind OnDeath to a bp event for UI death screen, ragdoll, remove body collision, etc.
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnDeath();
+	
 	/** Called for forwards/backward input */
 	void MoveForward(float Value);
 

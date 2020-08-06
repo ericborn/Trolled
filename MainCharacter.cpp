@@ -18,6 +18,8 @@
 #include "Materials/MaterialInstance.h"
 #include "Trolled/World/PickupBase.h"
 
+#define LOCTEXT_NAMESPACE "MainCharacter"
+
 // Constrcutor of main character, set default values here
 AMainCharacter::AMainCharacter()
 {
@@ -28,11 +30,17 @@ AMainCharacter::AMainCharacter()
 	BaseTurnRate = 45.f;
 	BaseLookUpRate = 45.f;
 
+	// creates a spring arm, attach to camera socket with a 0 length, length changed on character death
+	// repsonsible for keeping the camera from clipping into walls
+	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>("SpringArmComponent");
+	SpringArmComponent->SetupAttachment(GetMesh(), FName("CameraSocket"));
+	SpringArmComponent->TargetArmLength = 0.f;
+
 	// create and store character camera then attach to mesh
 	CameraComponent = CreateDefaultSubobject<UCameraComponent>("CameraComponent");
 	
-	// attaches the camera to the head socket
-	CameraComponent->SetupAttachment(GetMesh(), FName("CameraSocket"));
+	// attaches the camera to the spring arm
+	CameraComponent->SetupAttachment(SpringArmComponent);
 	
 	//follows the control rotation which comes from the mouse input
 	CameraComponent->bUsePawnControlRotation = true;
@@ -66,6 +74,15 @@ AMainCharacter::AMainCharacter()
 	PlayerInventory->SetInventoryCapacity(20);
 	PlayerInventory->SetWeightCapacity(60.f);
 
+	// create interaction component, set interaction and name text, bind to root component
+	LootPlayerInteraction = CreateDefaultSubobject<UInteractionComponent>("PlayerInteraction");
+	LootPlayerInteraction->InteractableActionText = LOCTEXT("LootPlayerText", "Loot");
+	LootPlayerInteraction->InteractableNameText = LOCTEXT("LootPlayerName", "Player");
+	LootPlayerInteraction->SetupAttachment(GetRootComponent());
+	// disable by default
+	LootPlayerInteraction->SetActive(false, true);
+	LootPlayerInteraction->bAutoActivate = false;
+
 	// check every 0.2, max interaction distance 10m
 	InteractionCheckFrequency = 0.2f;
 	InteractionCheckDistance = 1000.f;
@@ -94,6 +111,15 @@ AMainCharacter::AMainCharacter()
 void AMainCharacter::BeginPlay()
 {
 	Super::BeginPlay();
+
+	// when a player starts looting, dynamically bind the corpses player name to the corpse
+	LootPlayerInteraction->OnInteract.AddDynamic(this, &AMainCharacter::BeginLootingPlayer);
+
+	// player name is stored in the player state, get that name and set the on death loot text to display player name
+	if (APlayerState* PS = GetPlayerState())
+	{
+		LootPlayerInteraction->SetInteractableNameText(FText::FromString(PS->GetPlayerName()));
+	}
 
 	// stores values for a character with no armor equipped, so when removing armor later it can return to this
 	for (auto& PlayerMesh : PlayerMeshes)
@@ -647,6 +673,91 @@ void AMainCharacter::OnRep_Thirst(float OldThirst)
 	OnThirstModified(Thirst - OldThirst);
 }
 
+void AMainCharacter::Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser) 
+{	
+	// if killer is self, set self
+	Killer = this;
+	OnRep_Killer();
+}
+
+void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, const class AMainCharacter* EventInstigator, const AActor* DamageCauser) 
+{
+	// code version
+	// set killer to character coming into the function
+	// !!!Wont compile!!!!
+	//Killer = EventInstigator;
+
+	// video version
+	// cast to player from the event instigators pawn
+	// event instigator is the controller that caused the damage
+	// !!!Wont compile!!!!
+	//Killer = Cast<AMainCharacter>(EventInstigator->GetPawn());
+	OnRep_Killer();
+}
+
+// TODO:
+// create inventory drop from corpse after corpse is deleted
+// Checks need to be made that if a player can hold 20 items and has 5 items equipped, can they hold 15 more or 20?
+// if the equipped items count against total items holdable, when they die with a full inventory and their equipment is unhidden,
+// it will over overfill the inventory array and cause an error. May not be an issue if the max equipment cap is removed, 
+// or new slots are added as they are unequipped
+void AMainCharacter::OnRep_Killer() 
+{
+	// this controls the length of time a players corpse stays in the world, measured in seconds
+	// going to make this longer than suggested until I implement loot droping
+	// as a separate item after the corpse is deleted. Currently set to 5 minutes
+	SetLifeSpan(300.f);
+
+	// disable collision, enable physics for ragdoll, turn head mesh on for self, disable capsule collision
+	GetMesh()->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
+	GetMesh()->SetSimulatePhysics(true);
+	GetMesh()->SetCollisionResponseToChannel(ECC_Pawn, ECR_Ignore);
+	GetMesh()->DetachFromComponent(FDetachmentTransformRules::KeepWorldTransform);
+	GetMesh()->SetOwnerNoSee(false);
+	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
+	bReplicateMovement = false;
+
+	// stop players movement and animations
+	TurnOff();
+
+	// set loot interaction to active
+	LootPlayerInteraction->Activate();
+
+	// check for being the server
+	if (HasAuthority())
+	{
+		// create an array
+		TArray<UEquippableItem*> EquippedInvItems;
+		// move equipped items into the array
+		EquippedItems.GenerateValueArray(EquippedInvItems);
+
+		// iterate through the array and set all the equipped items to false
+		// so they appear back in the inventory, they're hidden from inv when equipped
+		for (auto& Equippable : EquippedInvItems)
+		{
+			Equippable->SetEquipped(false);
+		}
+	}
+
+	// if player
+	if (IsLocallyControlled())
+	{
+		// on death, move camera out 500 units, allow mouse to move camera to look around even while dead
+		SpringArmComponent->TargetArmLength = 500.f;
+		SpringArmComponent->AttachToComponent(GetCapsuleComponent(), FAttachmentTransformRules::SnapToTargetIncludingScale);
+		bUseControllerRotationPitch = true;
+
+		// draw deathscreen for local player with killer passed in so it can be drawn on the UI
+		if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
+		{
+			PC->Died(Killer);
+		}
+	}
+	
+
+}
+
 // check if timer is active
 bool AMainCharacter::IsInteracting() const
 {
@@ -864,3 +975,5 @@ void AMainCharacter::StopCrouching()
 {
 	UnCrouch();
 }
+
+#undef LOCTEXT_NAMESPACE
