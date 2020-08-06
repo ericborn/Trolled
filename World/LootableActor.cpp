@@ -99,7 +99,12 @@ void ALootableActor::BeginPlay()
 
 void ALootableActor::OnInteract(class AMainCharacter* Character) 
 {
-	
+	// if valid character
+	if (Character)
+	{
+		// set the characters loot source to the inventory of this actor
+		Character->SetLootSource(Inventory);
+	}	
 }
 
 #undef LOCTEXT_NAMESPACE
