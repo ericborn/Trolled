@@ -605,7 +605,7 @@ float AMainCharacter::ModifyStamina(const float Delta)
 	return Stamina - OldStamina;	
 }
 
-void AMainCharacter::OnRep_Stamina(float OldHealth) 
+void AMainCharacter::OnRep_Stamina(float OldStamina) 
 {
 	// rep the modified health value
 	OnStaminaModified(Stamina - OldStamina);
@@ -616,35 +616,35 @@ float AMainCharacter::ModifyHunger(const float Delta)
 	// takes current stamina of player
 	const float OldHunger = Hunger;
 
-	// modify the stamina
+	// modify the Hunger
 	Hunger = FMath::Clamp<float>(Hunger + Delta, 0.f, MaxHunger);
 
 	// return the difference between the two values
 	return Hunger - OldHunger;
 }
 
-void AMainCharacter::OnRep_Hunger(float OldHealth) 
+void AMainCharacter::OnRep_Hunger(float OldHunger) 
 {
 	// rep the modified health value
-	OnHungerModified(Stamina - OldStamina);
+	OnHungerModified(Hunger - OldHunger);
 }
 
 float AMainCharacter::ModifyThirst(const float Delta) 
 {
-		// takes current stamina of player
+	// takes current stamina of player
 	const float OldThirst = Thirst;
 
-	// modify the stamina
+	// modify the Thirst
 	Thirst = FMath::Clamp<float>(Thirst + Delta, 0.f, MaxThirst);
 
 	// return the difference between the two values
 	return Thirst - OldThirst;
 }
 
-void AMainCharacter::OnRep_Thirst(float OldHealth) 
+void AMainCharacter::OnRep_Thirst(float OldThirst) 
 {
-	// rep the modified health value
-	OnThirstModified(Stamina - OldStamina);
+	// rep the modified Thirst value
+	OnThirstModified(Thirst - OldThirst);
 }
 
 // check if timer is active
