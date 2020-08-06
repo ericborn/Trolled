@@ -96,11 +96,55 @@ protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
 
+	// array of replicated props
+	virtual void GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const override;
+
 	// Tick function, called every frame
 	virtual void Tick(float DeltaTime) override;
 
 	// call when a player restarts or respawns, used to remove death screen and reapply main HUD UI
 	virtual void Restart() override;
+
+public:
+
+	// function to set what is being looted from
+	UFUNCTION(BlueprintCallable)
+	void SetLootSource(class UInventoryComponent* NewLootSource);
+
+	// called when a player is looting
+	UFUNCTION(BlueprintPure, Category = "Looting")
+	bool IsLooting() const;
+
+protected:
+
+	//Begin being looted by a player
+	UFUNCTION()
+	void BeginLootingPlayer(class AMainCharacter* Character);
+
+	// server validating what is being looted from
+	UFUNCTION(Server, Reliable, WithValidation, BlueprintCallable)
+	void ServerSetLootSource(class UInventoryComponent* NewLootSource);
+
+	// The inventory that we are currently looting from
+	UPROPERTY(ReplicatedUsing = OnRep_LootSource, BlueprintReadOnly)
+	UInventoryComponent* LootSource;
+
+	UFUNCTION()
+	void OnLootSourceOwnerDestroyed(AActor* DestroyedActor);
+
+	// call when loot source changes, used with BP's for UI actions
+	UFUNCTION()
+	void OnRep_LootSource();
+
+public:
+
+	// client asking to loot
+	UFUNCTION(BlueprintCallable, Category = "Looting")
+	void LootItem(class UBaseItem* ItemToGive);
+
+	// server verifying the item is available and can be looted
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerLootItem(class UBaseItem* ItemToLoot);
 
 	// how often in seconds to check for an interactable object. 0 means every tick
 	UPROPERTY(EditDefaultsOnly, Category = "Interaction")

@@ -90,6 +90,14 @@ void AMainCharacter::BeginPlay()
 	
 }
 
+void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLifetimeProps) const 
+{
+	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
+
+	// replicate the loot source to all characters
+	DOREPLIFETIME_CONDITION(AMainCharacter, LootSource, COND_OwnerOnly);
+}
+
 // Called every frame
 void AMainCharacter::Tick(float DeltaTime)
 {
@@ -138,6 +146,165 @@ void AMainCharacter::Restart()
 		// from video
 		PC->ShowIngameUI();
 	}
+}
+
+
+void AMainCharacter::SetLootSource(class UInventoryComponent* NewLootSource) 
+{
+	// if the thing being looting is destroyed, closed the clients loot screen
+	if (NewLootSource && NewLootSource->GetOwner())
+	{
+		NewLootSource->GetOwner()->OnDestroyed.AddUniqueDynamic(this, &AMainCharacter::OnLootSourceOwnerDestroyed);
+	}
+
+	// if server
+	if (HasAuthority())
+	{
+		// original designers intent is that corpses only stay in the world for 2 minutes after death
+		// if you just start looting the body, it keeps it from despawning for another 2 minutes
+		// I dont like this design choice and will find a way to destroy the body but keep loot on the ground
+		// if (NewLootSource)
+		// {
+		// 	// Looting a player keeps their body alive for an extra 2 minutes to provide enough time to loot their items
+		// 	if (ASurvivalCharacter* Character = Cast<AMainCharacter>(NewLootSource->GetOwner()))
+		// 	{
+		// 		Character->SetLifeSpan(120.f);
+		// 	}
+		// }
+
+		// set loot source to the new player who is looting
+		LootSource = NewLootSource;
+
+		// replicate from server down to client to allow them to loot
+		OnRep_LootSource();
+	}
+	else
+	{
+		// when a player starts looting, ask the server to let the player loot
+		ServerSetLootSource(NewLootSource);
+	}
+
+
+}
+
+bool AMainCharacter::IsLooting() const
+{
+	// if LootSource is not null, we're looting
+	return LootSource != nullptr;
+}
+
+void AMainCharacter::BeginLootingPlayer(class AMainCharacter* Character) 
+{
+	// if valid character
+	if (Character)
+	{
+		// set the loot source to the dead players inventory
+		Character->SetLootSource(PlayerInventory);
+	}
+}
+
+void AMainCharacter::OnLootSourceOwnerDestroyed(AActor* DestroyedActor) 
+{
+	// check for server, valid loot source and an actor that was destroyed was the loot source
+	// if the loot source is destroyed, set the source to null at server, which reps back to client
+	if (HasAuthority() && LootSource && DestroyedActor == LootSource->GetOwner())
+	{
+		ServerSetLootSource(nullptr);
+	}
+}
+
+void AMainCharacter::OnRep_LootSource() 
+{
+	// if the players controller is calling onrep
+	// bring up or remove the looting menu for that player
+	if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
+	{
+		if (PC->IsLocalController())
+		{
+			// from final, not in video
+			// if (ASurvivalHUD* HUD = Cast<ASurvivalHUD>(PC->GetHUD()))
+			// {
+			// 	if(LootSource)
+			// 	{
+			// 		HUD->OpenLootWidget();
+			// 	}
+			// 	else
+			// 	{
+			// 		HUD->CloseLootWidget();
+			// 	}
+			// }
+
+			// if the player is the looter
+			if(LootSource)
+			{
+				// show the loot menu
+				PC->ShowLootMenu(LootSource);
+			}
+			else
+			{
+				// hide the loot menu
+				PC->HideLootMenu();
+			}
+		}
+	}
+}
+
+void AMainCharacter::LootItem(class UBaseItem* ItemToGive) 
+{
+	// if server
+	if (HasAuthority())
+	{
+		// valid inventory, loot source, item, item class and quantity being asked for
+		if (PlayerInventory && LootSource && ItemToGive && LootSource->HasItemQuantity(ItemToGive->GetClass(), ItemToGive->GetQuantity()))
+		{
+			// move the item to the requesting player
+			const FItemAddResult AddResult = PlayerInventory->TryAddItem(ItemToGive);
+
+			// if that amount is more than 0
+			if (AddResult.AmountToGive > 0)
+			{
+				// remove the item from the loot source
+				LootSource->ConsumeQuantity(ItemToGive, AddResult.AmountToGive);
+			}
+			else
+			{
+				// check that looting controller is valid
+				
+				if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
+				{
+					// tell player why they couldn't loot the item
+					PC->ClientShowNotification(AddResult.ErrorText);
+				}
+			}
+		}
+	}
+	// if player, request server to give loot
+	else
+	{
+		ServerLootItem(ItemToGive);
+	}
+}
+
+void AMainCharacter::ServerLootItem_Implementation(class UBaseItem* ItemToLoot) 
+{
+	// call loot item function
+	LootItem(ItemToLoot);
+}
+
+bool AMainCharacter::ServerLootItem_Validate(class UBaseItem* ItemToLoot) 
+{
+	return true;
+}
+
+void AMainCharacter::ServerSetLootSource_Implementation(class UInventoryComponent* NewLootSource) 
+{
+	// sets the player as the new loot source when asked to loot
+	SetLootSource(NewLootSource);
+}
+
+bool AMainCharacter::ServerSetLootSource_Validate(class UInventoryComponent* NewLootSource) 
+{
+	return true;
 }
 
 void AMainCharacter::PerformInteractionCheck() 
