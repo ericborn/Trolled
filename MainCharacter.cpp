@@ -70,6 +70,19 @@ AMainCharacter::AMainCharacter()
 	InteractionCheckFrequency = 0.2f;
 	InteractionCheckDistance = 1000.f;
 
+	// set player stats
+	MaxHealth = 100.f;
+	Health = MaxHealth;
+
+	MaxStamina = 100.f;
+	Stamina = MaxStamina;
+
+	MaxHunger = 100.f;
+	Hunger = MaxHunger;
+
+	MaxThirst = 100.f;
+	Thirst = MaxThirst;
+
 	// Hides the head for the player
 	GetMesh()->SetOwnerNoSee(true);
 
@@ -96,6 +109,15 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	// replicate the loot source to all characters
 	DOREPLIFETIME_CONDITION(AMainCharacter, LootSource, COND_OwnerOnly);
+
+	// COND_OwnerOnly reps between server and affected client, not all clients.
+	// cuts down on traffic being sent between all characters for each others health, stam, etc.
+	// if animation changes or mesh effects (blood, broken armour) when a player is hurt
+	// DOREPLIFETIME with no CONDITION and COND_OwnerOnly would be necessary
+	DOREPLIFETIME_CONDITION(AMainCharacter, Health, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AMainCharacter, Stamina, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AMainCharacter, Hunger, COND_OwnerOnly);
+	DOREPLIFETIME_CONDITION(AMainCharacter, Thirst, COND_OwnerOnly);
 }
 
 // Called every frame
@@ -551,6 +573,78 @@ class USkeletalMeshComponent* AMainCharacter::GetSlotSkeletalMeshComponent(const
 		return *PlayerMeshes.Find(Slot);
 	}
 	return nullptr;
+}
+
+float AMainCharacter::ModifyHealth(const float Delta) 
+{
+	// takes current health of player
+	const float OldHealth = Health;
+
+	// modify the health
+	Health = FMath::Clamp<float>(Health + Delta, 0.f, MaxHealth);
+
+	// return the difference between the two values
+	return Health - OldHealth;	
+}
+
+void AMainCharacter::OnRep_Health(float OldHealth) 
+{
+	// rep the modified health value
+	OnHealthModified(Health - OldHealth);
+}
+
+float AMainCharacter::ModifyStamina(const float Delta) 
+{
+	// takes current stamina of player
+	const float OldStamina = Stamina;
+
+	// modify the stamina
+	Stamina = FMath::Clamp<float>(Stamina + Delta, 0.f, MaxStamina);
+
+	// return the difference between the two values
+	return Stamina - OldStamina;	
+}
+
+void AMainCharacter::OnRep_Stamina(float OldHealth) 
+{
+	// rep the modified health value
+	OnStaminaModified(Stamina - OldStamina);
+}
+
+float AMainCharacter::ModifyHunger(const float Delta) 
+{
+	// takes current stamina of player
+	const float OldHunger = Hunger;
+
+	// modify the stamina
+	Hunger = FMath::Clamp<float>(Hunger + Delta, 0.f, MaxHunger);
+
+	// return the difference between the two values
+	return Hunger - OldHunger;
+}
+
+void AMainCharacter::OnRep_Hunger(float OldHealth) 
+{
+	// rep the modified health value
+	OnHungerModified(Stamina - OldStamina);
+}
+
+float AMainCharacter::ModifyThirst(const float Delta) 
+{
+		// takes current stamina of player
+	const float OldThirst = Thirst;
+
+	// modify the stamina
+	Thirst = FMath::Clamp<float>(Thirst + Delta, 0.f, MaxThirst);
+
+	// return the difference between the two values
+	return Thirst - OldThirst;
+}
+
+void AMainCharacter::OnRep_Thirst(float OldHealth) 
+{
+	// rep the modified health value
+	OnThirstModified(Stamina - OldStamina);
 }
 
 // check if timer is active

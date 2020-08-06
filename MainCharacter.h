@@ -243,6 +243,83 @@ protected:
 	UPROPERTY(VisibleAnywhere, Category = "Items")
 	TMap<EEquippableSlot, UEquippableItem*> EquippedItems;
 
+	// character current health
+	UPROPERTY(ReplicatedUsing = OnRep_Health, BlueprintReadOnly, Category = "Health")
+	float Health;
+
+	// character max health
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
+	float MaxHealth;
+
+	// character current stamina
+	UPROPERTY(ReplicatedUsing = OnRep_Stamina, BlueprintReadOnly, Category = "Health")
+	float Stamina;
+
+	// character max stamina
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
+	float MaxStamina;
+
+	// character current hunger
+	UPROPERTY(ReplicatedUsing = OnRep_Hunger, BlueprintReadOnly, Category = "Health")
+	float Hunger;
+
+	// character max hunger
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
+	float MaxHunger;
+
+	// character current Thirst
+	UPROPERTY(ReplicatedUsing = OnRep_Thirst, BlueprintReadOnly, Category = "Health")
+	float Thirst;
+
+	// character max Thirst
+	UPROPERTY(EditDefaultsOnly, BlueprintReadOnly, Category = "Health")
+	float MaxThirst;
+
+public:
+
+	//Modify the players health by either a negative or positive amount. Return the amount of health actually removed
+	float ModifyHealth(const float Delta);
+
+	// rep version of health
+	UFUNCTION()
+	void OnRep_Health(float OldHealth);
+
+	// allows calls to bp for changing screen color when low on health
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnHealthModified(const float HealthDelta);
+
+	//Modify the players stamina by either a negative or positive amount. Return the amount of stamina actually removed
+	float ModifyStamina(const float Delta);
+
+	// rep version of stamina
+	UFUNCTION()
+	void OnRep_Stamina(float OldHealth);
+
+	// allows calls to bp for changing screen color when low on stamina
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnStaminaModified(const float HealthDelta);
+
+	//Modify the players Hunger by either a negative or positive amount. Return the amount of Hunger actually removed
+	float ModifyHunger(const float Delta);
+
+	// rep version of hunger
+	UFUNCTION()
+	void OnRep_Hunger(float OldHealth);
+
+	// allows calls to bp for changing screen color when low on Hunger
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnHungerModified(const float HealthDelta);
+
+	//Modify the players Thirst by either a negative or positive amount. Return the amount of Thirst actually removed
+	float ModifyThirst(const float Delta);
+
+	// rep version of Thirst
+	UFUNCTION()
+	void OnRep_Thirst(float OldHealth);
+
+	// allows calls to bp for changing screen color when low on Thirst
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnThirstModified(const float HealthDelta);
 
 protected:
 	/** Called for forwards/backward input */
