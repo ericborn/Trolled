@@ -4,21 +4,49 @@
 #include "MainCharacter.h"
 #include "Net/UnrealNetwork.h"
 #include "Camera/CameraComponent.h"
-#include "Trolled/Player/TrolledPlayerController.h"
 #include "GameFramework/CharacterMovementComponent.h"
-#include "GameFramework/PlayerState.h"
 #include "GameFramework/SpringArmComponent.h"
+#include "GameFramework/PlayerState.h"
 #include "GameFramework/DamageType.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/CapsuleComponent.h"
-#include "Trolled/Components/InventoryComponent.h"
+#include "Kismet/GameplayStatics.h"
 #include "Components/InteractionComponent.h"
+#include "Trolled/Player/TrolledPlayerController.h"
+#include "Trolled/Components/InventoryComponent.h"
 #include "Trolled/Items/EquippableItem.h"
-#include "Trolled/Items/GearItem.h"
-#include "Materials/MaterialInstance.h"
 #include "Trolled/World/PickupBase.h"
+#include "Trolled/Items/GearItem.h"
+#include "Trolled/Trolled.h"
+#include "Materials/MaterialInstance.h"
 
 #define LOCTEXT_NAMESPACE "MainCharacter"
+
+/*
+!!!server validation!!!
+https://docs.unrealengine.com/en-US/Gameplay/Networking/Actors/RPCs/index.html
+
+The tutorials implemented the server functions with validation backwards
+Should perform any functionality checks in the bool portion
+and the implementation should just handle how it happens
+
+UFUNCTION( Server, WithValidation )
+void SomeRPCFunction( int32 AddHealth );
+
+bool SomeRPCFunction_Validate( int32 AddHealth )
+{
+    if ( AddHealth > MAX_ADD_HEALTH )
+    {
+        return false;                       // This will disconnect the caller
+    }
+    return true;                              // This will allow the RPC to be called
+}
+
+void SomeRPCFunction_Implementation( int32 AddHealth )
+{
+    Health += AddHealth;
+}
+*/
 
 // Constrcutor of main character, set default values here
 AMainCharacter::AMainCharacter()
@@ -99,6 +127,10 @@ AMainCharacter::AMainCharacter()
 
 	MaxThirst = 100.f;
 	Thirst = MaxThirst;
+
+	// melee attack range and damage
+	MeleeAttackDistance = 150.f;
+	MeleeAttackDamage = 20.f;
 
 	// Hides the head for the player
 	GetMesh()->SetOwnerNoSee(true);
@@ -673,6 +705,106 @@ void AMainCharacter::OnRep_Thirst(float OldThirst)
 	OnThirstModified(Thirst - OldThirst);
 }
 
+void AMainCharacter::StartFire() 
+{
+	// used once weapons are implemented
+	// if (EquippedWeapon)
+	// {
+	// 	EquippedWeapon->StartFire();
+	// }
+	// else
+	// {
+	// 	BeginMeleeAttack();
+	// }
+
+	// perform melee
+	BeginMeleeAttack();
+}
+
+void AMainCharacter::StopFire() 
+{
+	
+}
+
+void AMainCharacter::BeginMeleeAttack() 
+{
+	// forces the melee swing duration to be the length of the animation
+	// preventing swining again until animation is finished
+	if (GetWorld()->TimeSince(LastMeleeAttackTime) > MeleeAttackMontage->GetPlayLength())
+	{
+		// uses a sphere type collision to check if the attack landed
+		// more forgiving than other methods
+		FHitResult Hit;
+		FCollisionShape Shape = FCollisionShape::MakeSphere(15.f);
+
+		// trace from camera multiplied by the melee attack distance to find the max distance an attack could land
+		FVector StartTrace = CameraComponent->GetComponentLocation();
+		FVector EndTrace = (CameraComponent->GetComponentRotation().Vector() * MeleeAttackDistance) + StartTrace;
+
+		// setup params for the attack check
+		FCollisionQueryParams QueryParams = FCollisionQueryParams("MeleeSweep", false, this);
+
+		// play the melee animation
+		PlayAnimMontage(MeleeAttackMontage);
+
+		// check if anything between the player and max melee distance is affectable on the COLLISION_WEAPON channel in the sphere shape
+		if (GetWorld()->SweepSingleByChannel(Hit, StartTrace, EndTrace, FQuat(), COLLISION_WEAPON, Shape, QueryParams))
+		{
+			// find the character that was hit
+			if (AMainCharacter* HitPlayer = Cast<AMainCharacter>(Hit.GetActor()))
+			{
+				// get their controller
+				if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
+				{
+					// give the attacking character a hit marker
+					// code version
+					//PC->ClientShotHitConfirmed();
+
+					// video version
+					PC->OnHitPlayer();
+				}
+			}
+		}
+		// server process the hit to deal the damage
+			ServerProcessMeleeHit(Hit);
+
+		// set time for attack
+		LastMeleeAttackTime = GetWorld()->GetTimeSeconds();
+	}
+}
+
+void AMainCharacter::ServerProcessMeleeHit_Implementation(const FHitResult& MeleeHit) 
+{
+	// check that time since last melee is greater than melee animation duration, and distance between characters is close enough for damage
+	if (GetWorld()->TimeSince(LastMeleeAttackTime) > MeleeAttackMontage->GetPlayLength() && (GetActorLocation() - MeleeHit.ImpactPoint).Size() <= MeleeAttackDistance)
+	{
+		// tells other players to display own melee animation
+		MulticastPlayMeleeFX();
+
+		// if the hit player is a main character actor
+		if (AMainCharacter* HitPlayer = Cast<AMainCharacter>(MeleeHit.GetActor()))
+		{
+			// apply point damage
+			// code
+			//UGameplayStatics::ApplyPointDamage(MeleeHit.GetActor(), MeleeAttackDamage, (MeleeHit.TraceStart - MeleeHit.TraceEnd).GetSafeNormal(), MeleeHit, GetController(), this, UMeleeDamage::StaticClass());
+
+			//video
+			UGameplayStatics::ApplyPointDamage(HitPlayer, MeleeAttackDamage, (MeleeHit.TraceStart - MeleeHit.TraceEnd).GetSafeNormal(), MeleeHit, GetController(), this, MeleeDamageType);
+		}
+	}
+	// set LastMeleeAttackTime to current time
+	LastMeleeAttackTime = GetWorld()->GetTimeSeconds();
+}
+
+void AMainCharacter::MulticastPlayMeleeFX_Implementation() 
+{
+	// if not the local player, play melee local characters attack anim for other characters
+	if (!IsLocallyControlled())
+	{
+		PlayAnimMontage(MeleeAttackMontage);
+	}
+}
+
 void AMainCharacter::Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser) 
 {	
 	// if killer is self, set self
@@ -716,7 +848,9 @@ void AMainCharacter::OnRep_Killer()
 	GetMesh()->SetOwnerNoSee(false);
 	GetCapsuleComponent()->SetCollisionEnabled(ECollisionEnabled::NoCollision);
 	GetCapsuleComponent()->SetCollisionResponseToAllChannels(ECR_Ignore);
-	bReplicateMovement = false;
+	
+	// wont compile
+	//bReplicateMovement = false;
 
 	// stop players movement and animations
 	TurnOff();
@@ -754,8 +888,6 @@ void AMainCharacter::OnRep_Killer()
 			PC->Died(Killer);
 		}
 	}
-	
-
 }
 
 // check if timer is active
@@ -903,9 +1035,17 @@ bool AMainCharacter::ServerEndInteract_Validate()
 void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent)
 {
 	// Set up gameplay key bindings
-	check(PlayerInputComponent);
-	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &ACharacter::Jump);
-	PlayerInputComponent->BindAction("Jump", IE_Released, this, &ACharacter::StopJumping);
+
+	Super::SetupPlayerInputComponent(PlayerInputComponent);
+	
+	// was here by default
+	//check(PlayerInputComponent);
+
+	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AMainCharacter::StartFire);
+	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AMainCharacter::StopFire);
+
+	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMainCharacter::Jump);
+	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMainCharacter::StopJumping);
 
 	PlayerInputComponent->BindAction("Interact", IE_Pressed, this, &AMainCharacter::BeginInteract);
 	PlayerInputComponent->BindAction("Interact", IE_Released, this, &AMainCharacter::EndInteract);

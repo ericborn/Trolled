@@ -331,7 +331,46 @@ public:
 	void OnThirstModified(const float ThirstDelta);
 
 protected:
-	
+
+	// called when left mouse button is pressed
+	void StartFire();
+
+	// called when left mouse button is released
+	void StopFire();
+
+	// perform melee
+	void BeginMeleeAttack();
+
+	// server authoritative for melee hits
+	// with validation should be added, not included in video
+	UFUNCTION(Server, Reliable)
+	void ServerProcessMeleeHit(const FHitResult& MeleeHit);
+
+	// plays animation for other characters
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastPlayMeleeFX();
+
+	// last attack time, prevents spamming attacks
+	UPROPERTY()
+	float LastMeleeAttackTime;
+
+	// range of attack
+	UPROPERTY(EditDefaultsOnly, Category = Melee)
+	float MeleeAttackDistance;
+
+	// from code
+	// attack damage
+	UPROPERTY(EditDefaultsOnly, Category = Melee)
+	float MeleeAttackDamage;
+
+	// from video
+	UPROPERTY(EditDefaultsOnly, Category = Melee)
+	TSubclassOf<class UDamageType> MeleeDamageType;
+
+	// animation used for melee
+	UPROPERTY(EditDefaultsOnly, Category = Melee)
+	class UAnimMontage* MeleeAttackMontage;
+
 	// Called when killed by the player, or killed by something else like the environment
 	void Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser);
 	void KilledByPlayer(struct FDamageEvent const& DamageEvent, const class AMainCharacter* EventInstigator, const AActor* DamageCauser);

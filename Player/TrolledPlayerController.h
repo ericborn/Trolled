@@ -18,6 +18,9 @@ public:
 
 	ATrolledPlayerController();
 
+	// Local player dies
+	void Died(class ASurvivalCharacter* Killer);
+
 	// pushes a notification from the server down to the client
 	UFUNCTION(Client, Reliable, BlueprintCallable)
 	void ClientShowNotification(const FText& Message);
