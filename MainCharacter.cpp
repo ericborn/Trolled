@@ -705,12 +705,12 @@ void AMainCharacter::OnRep_Thirst(float OldThirst)
 	OnThirstModified(Thirst - OldThirst);
 }
 
-void AMainCharacter::StartFire() 
+void AMainCharacter::StartAttack() 
 {
 	// used once weapons are implemented
 	// if (EquippedWeapon)
 	// {
-	// 	EquippedWeapon->StartFire();
+	// 	EquippedWeapon->StartAttack();
 	// }
 	// else
 	// {
@@ -721,7 +721,7 @@ void AMainCharacter::StartFire()
 	BeginMeleeAttack();
 }
 
-void AMainCharacter::StopFire() 
+void AMainCharacter::StopAttack() 
 {
 	
 }
@@ -750,6 +750,8 @@ void AMainCharacter::BeginMeleeAttack()
 		// check if anything between the player and max melee distance is affectable on the COLLISION_WEAPON channel in the sphere shape
 		if (GetWorld()->SweepSingleByChannel(Hit, StartTrace, EndTrace, FQuat(), COLLISION_WEAPON, Shape, QueryParams))
 		{
+			UE_LOG(LogTemp, Warning, TEXT("HIT!"))
+			
 			// find the character that was hit
 			if (AMainCharacter* HitPlayer = Cast<AMainCharacter>(Hit.GetActor()))
 			{
@@ -885,7 +887,8 @@ void AMainCharacter::OnRep_Killer()
 		// draw deathscreen for local player with killer passed in so it can be drawn on the UI
 		if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
 		{
-			PC->Died(Killer);
+			// wont compile until a died is created on controller, but example code has features also unimplemented
+			//PC->Died(Killer);
 		}
 	}
 }
@@ -1041,8 +1044,8 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	// was here by default
 	//check(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("Fire", IE_Pressed, this, &AMainCharacter::StartFire);
-	PlayerInputComponent->BindAction("Fire", IE_Released, this, &AMainCharacter::StopFire);
+	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartAttack);
+	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopAttack);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMainCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMainCharacter::StopJumping);

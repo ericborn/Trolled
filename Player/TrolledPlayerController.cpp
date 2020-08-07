@@ -10,10 +10,10 @@ ATrolledPlayerController::ATrolledPlayerController()
     
 }
 
-void ATrolledPlayerController::Died(class AMainCharacter* Killer) 
-{
+// void ATrolledPlayerController::Died(class AMainCharacter* Killer) 
+// {
 
-}
+// }
 
 // void ATrolledPlayerController::Died(class ASurvivalCharacter* Killer) 
 // {

@@ -333,10 +333,10 @@ public:
 protected:
 
 	// called when left mouse button is pressed
-	void StartFire();
+	void StartAttack();
 
 	// called when left mouse button is released
-	void StopFire();
+	void StopAttack();
 
 	// perform melee
 	void BeginMeleeAttack();
