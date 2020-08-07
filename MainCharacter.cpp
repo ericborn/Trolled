@@ -228,6 +228,32 @@ void AMainCharacter::Restart()
 	}
 }
 
+float AMainCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, ATrolledController* EventInstigator, AActor* DamageCauser) 
+{
+	Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
+
+	// mod health with negative damage amount, taking away health
+	const float DamageDealt = ModifyHealth(-Damage);
+
+	// if health less than 0
+	if (Health <= 0.f)
+	{
+		// if a player dealt the damage
+		if (AMainCharacter* KillerCharacter = Cast<AMainCharacter>(DamageCauser->GetOwner()))
+		{
+			// killed by player
+			KilledByPlayer(DamageEvent, KillerCharacter, DamageCauser);
+		}
+		else
+		{
+			// killed by something else
+			Killed(DamageEvent, DamageCauser);
+		}
+	}
+
+	return DamageDealt;
+}
+
 
 void AMainCharacter::SetLootSource(class UInventoryComponent* NewLootSource) 
 {
@@ -750,7 +776,7 @@ void AMainCharacter::BeginMeleeAttack()
 		// check if anything between the player and max melee distance is affectable on the COLLISION_WEAPON channel in the sphere shape
 		if (GetWorld()->SweepSingleByChannel(Hit, StartTrace, EndTrace, FQuat(), COLLISION_WEAPON, Shape, QueryParams))
 		{
-			UE_LOG(LogTemp, Warning, TEXT("HIT!"))
+			UE_LOG(LogTemp, Warning, TEXT("HIT!"));
 			
 			// find the character that was hit
 			if (AMainCharacter* HitPlayer = Cast<AMainCharacter>(Hit.GetActor()))
@@ -782,17 +808,9 @@ void AMainCharacter::ServerProcessMeleeHit_Implementation(const FHitResult& Mele
 	{
 		// tells other players to display own melee animation
 		MulticastPlayMeleeFX();
-
-		// if the hit player is a main character actor
-		if (AMainCharacter* HitPlayer = Cast<AMainCharacter>(MeleeHit.GetActor()))
-		{
-			// apply point damage
-			// code
-			//UGameplayStatics::ApplyPointDamage(MeleeHit.GetActor(), MeleeAttackDamage, (MeleeHit.TraceStart - MeleeHit.TraceEnd).GetSafeNormal(), MeleeHit, GetController(), this, UMeleeDamage::StaticClass());
-
-			//video
-			UGameplayStatics::ApplyPointDamage(HitPlayer, MeleeAttackDamage, (MeleeHit.TraceStart - MeleeHit.TraceEnd).GetSafeNormal(), MeleeHit, GetController(), this, MeleeDamageType);
-		}
+	
+		// apply damage to any actor, use BP's to listen for damage
+		UGameplayStatics::ApplyPointDamage(MeleeHit.GetActor(), MeleeAttackDamage, (MeleeHit.TraceStart - MeleeHit.TraceEnd).GetSafeNormal(), MeleeHit, GetController(), this, UMeleeDamage::StaticClass());
 	}
 	// set LastMeleeAttackTime to current time
 	LastMeleeAttackTime = GetWorld()->GetTimeSeconds();
@@ -814,12 +832,12 @@ void AMainCharacter::Killed(struct FDamageEvent const& DamageEvent, const AActor
 	OnRep_Killer();
 }
 
-void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, const class AMainCharacter* EventInstigator, const AActor* DamageCauser) 
+void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* character, const AActor* DamageCauser) 
 {
 	// code version
 	// set killer to character coming into the function
 	// !!!Wont compile!!!!
-	//Killer = EventInstigator;
+	Killer = character;
 
 	// video version
 	// cast to player from the event instigators pawn

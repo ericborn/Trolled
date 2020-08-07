@@ -114,6 +114,11 @@ protected:
 	// call when a player restarts or respawns, used to remove death screen and reapply main HUD UI
 	virtual void Restart() override;
 
+	// returns the amount of damage the player took from a damage event
+	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, ATrolledPlayerController* EventInstigator, AActor* DamageCauser) override;
+
+
+
 public:
 
 	// function to set what is being looted from
@@ -373,7 +378,7 @@ protected:
 
 	// Called when killed by the player, or killed by something else like the environment
 	void Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser);
-	void KilledByPlayer(struct FDamageEvent const& DamageEvent, const class AMainCharacter* EventInstigator, const AActor* DamageCauser);
+	void KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* character, const AActor* DamageCauser);
 
 	// set when someone is killed by someone else, repped to everyone else by the server
 	UPROPERTY(ReplicatedUsing = OnRep_Killer)
