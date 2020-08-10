@@ -115,9 +115,7 @@ protected:
 	virtual void Restart() override;
 
 	// returns the amount of damage the player took from a damage event
-	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, ATrolledPlayerController* EventInstigator, AActor* DamageCauser) override;
-
-
+	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
 public:
 
@@ -369,8 +367,8 @@ protected:
 	float MeleeAttackDamage;
 
 	// from video
-	UPROPERTY(EditDefaultsOnly, Category = Melee)
-	TSubclassOf<class UDamageType> MeleeDamageType;
+	// UPROPERTY(EditDefaultsOnly, Category = Melee)
+	// TSubclassOf<class UDamageType> MeleeDamageType;
 
 	// animation used for melee
 	UPROPERTY(EditDefaultsOnly, Category = Melee)
@@ -378,7 +376,7 @@ protected:
 
 	// Called when killed by the player, or killed by something else like the environment
 	void Killed(struct FDamageEvent const& DamageEvent, const AActor* DamageCauser);
-	void KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* character, const AActor* DamageCauser);
+	void KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* Character, const AActor* DamageCauser);
 
 	// set when someone is killed by someone else, repped to everyone else by the server
 	UPROPERTY(ReplicatedUsing = OnRep_Killer)

@@ -14,6 +14,7 @@
 #include "Components/InteractionComponent.h"
 #include "Trolled/Player/TrolledPlayerController.h"
 #include "Trolled/Components/InventoryComponent.h"
+#include "Trolled/Weapons/TrolledDamageTypes.h"
 #include "Trolled/Items/EquippableItem.h"
 #include "Trolled/World/PickupBase.h"
 #include "Trolled/Items/GearItem.h"
@@ -166,7 +167,10 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	Super::GetLifetimeReplicatedProps(OutLifetimeProps);
 
 	// replicate the loot source to all characters
-	DOREPLIFETIME_CONDITION(AMainCharacter, LootSource, COND_OwnerOnly);
+	DOREPLIFETIME(AMainCharacter, LootSource);
+
+	// replicate who killed the player
+	DOREPLIFETIME(AMainCharacter, Killer);
 
 	// COND_OwnerOnly reps between server and affected client, not all clients.
 	// cuts down on traffic being sent between all characters for each others health, stam, etc.
@@ -228,7 +232,8 @@ void AMainCharacter::Restart()
 	}
 }
 
-float AMainCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, ATrolledController* EventInstigator, AActor* DamageCauser) 
+float AMainCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) 
+//float AMainCharacter::TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, ATrolledPlayerController* EventInstigator, AActor* DamageCauser) 
 {
 	Super::TakeDamage(Damage, DamageEvent, EventInstigator, DamageCauser);
 
@@ -832,12 +837,12 @@ void AMainCharacter::Killed(struct FDamageEvent const& DamageEvent, const AActor
 	OnRep_Killer();
 }
 
-void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* character, const AActor* DamageCauser) 
+void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, class AMainCharacter* Character, const AActor* DamageCauser) 
 {
 	// code version
 	// set killer to character coming into the function
 	// !!!Wont compile!!!!
-	Killer = character;
+	Killer = Character;
 
 	// video version
 	// cast to player from the event instigators pawn
@@ -871,9 +876,6 @@ void AMainCharacter::OnRep_Killer()
 	
 	// wont compile
 	//bReplicateMovement = false;
-
-	// stop players movement and animations
-	TurnOff();
 
 	// set loot interaction to active
 	LootPlayerInteraction->Activate();
