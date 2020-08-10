@@ -49,7 +49,9 @@ public:
 
 	// override show/hide and added to inventory for equipment
 	virtual bool ShouldShowInInventory() const override;
-	//virtual void AddedToInventory(class UInventoryComponent* Inventory) override;
+
+	// function called when an item is added to the inventory, override to allow auto equip on pickup
+	virtual void AddedToInventory(class UInventoryComponent* Inventory) override;
 
 	// track if something is equipped
 	UFUNCTION(BlueprintPure, Category = "Equippables")

@@ -66,21 +66,27 @@ bool UEquippableItem::ShouldShowInInventory() const
     return !bEquipped;
 }
 
-// void UEquippableItem::AddedToInventory(class UInventoryComponent* Inventory)
-// {
-// 	//If the player looted an item don't equip it
-// 	if (AMainCharacter* Character = Cast<AMainCharacter>(Inventory->GetOwner()))
-// 	{
-// 		if (Character && !Character->IsLooting())
-// 		{
-// 			/**If we take an equippable, and don't have an item equipped at its slot, then auto equip it*/
-// 			if (!Character->GetEquippedItems().Contains(Slot))
-// 			{
-// 				SetEquipped(true);
-// 			}
-// 		}
-// 	}
-// }
+void UEquippableItem::AddedToInventory(class UInventoryComponent* Inventory)
+{
+	// check that the item was added to a players inventory, prevents chests from trying to equip items
+	if (AMainCharacter* Character = Cast<AMainCharacter>(Inventory->GetOwner()))
+	{
+		// check is character and character not looting player/chest
+		// only auto equips items grabbed from the ground
+		// tutorial implemented this way to avoid confusing someone
+		// since equipped items would move straight to the equipped items boxes and never land in the inventory
+		// can probably test and remove the IsLooting check
+		if (Character && !Character->IsLooting())
+		{
+			// check which slots the character currently has open
+			if (!Character->GetEquippedItems().Contains(Slot))
+			{
+				// equip the item if the slot is empty
+				SetEquipped(true);
+			}
+		}
+	}
+}
 
 void UEquippableItem::SetEquipped(bool bNewEquipped)
 {
