@@ -25,6 +25,9 @@
 
 #define LOCTEXT_NAMESPACE "MainCharacter"
 
+// define ADS socket
+static FName NAME_AimDownSightsSocket("ADSSocket");
+
 /*
 !!!server validation!!!
 https://docs.unrealengine.com/en-US/Gameplay/Networking/Actors/RPCs/index.html
@@ -131,6 +134,9 @@ AMainCharacter::AMainCharacter()
 	MeleeAttackDistance = 150.f;
 	MeleeAttackDamage = 20.f;
 
+	// default to not ADS
+	bIsAiming = false;
+
 	// Hides the head for the player
 	GetMesh()->SetOwnerNoSee(true);
 
@@ -181,6 +187,9 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 	DOREPLIFETIME_CONDITION(AMainCharacter, Stamina, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AMainCharacter, Hunger, COND_OwnerOnly);
 	DOREPLIFETIME_CONDITION(AMainCharacter, Thirst, COND_OwnerOnly);
+
+	// reps aiming to other players so they see this character perform aim animation
+	DOREPLIFETIME_CONDITION(AMainCharacter, bIsAiming, COND_SkipOwner);
 }
 
 // Called every frame
@@ -195,23 +204,42 @@ void AMainCharacter::Tick(float DeltaTime)
 	// !!! ORIGINAL VERSION!!!
 	const bool bIsInteractingOnServer = (!HasAuthority() && IsInteracting());
 
-	// !!! FOUND IN SURVIVAL CHAR FILE!!!
-	//const bool bIsInteractingOnServer = (GetNetMode() == NM_DedicatedServer && IsInteracting());
-
 	// if not the server or a player that is interacting and if the time 
 	// since last check is greater than check frequency, check again
-	//if (!HasAuthority() || bIsInteractingOnServer) 
-	//&& GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency)
-	if ((GetNetMode() != NM_DedicatedServer) && (GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency))
+	if ((!HasAuthority() || bIsInteractingOnServer) && GetWorld()->TimeSince(InteractionData.LastInteractionCheckTime) > InteractionCheckFrequency)
 	{
 		// checks if the player is looking at an interactable
 		PerformInteractionCheck();
-		// if (GEngine)
-		// {
-		// 	GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("PerformInteractionCheck!")); 
-		// }
 	}
-	
+
+	// only affect aiming for local character
+	if (IsLocallyControlled())
+	{
+		// TODO:
+		// need to replace with variables so it can be adjusted by player
+		// FOV 70 when ADS, otherwise 100, interp between the two when ADS
+		const float DesiredFOV = IsAiming() ? 70.f : 100.f;
+		CameraComponent->SetFieldOfView(FMath::FInterpTo(CameraComponent->FieldOfView, DesiredFOV, DeltaTime, 10.f));
+
+		// if you have a weapon
+		if (EquippedWeapon)
+		{
+			// get the ADS socket where the camera should look when ADSing
+			const FVector ADSLocation = EquippedWeapon->GetWeaponMesh()->GetSocketLocation(NAME_AimDownSightsSocket);
+			
+			// get the camera position
+			const FVector DefaultCameraLocation = GetMesh()->GetSocketLocation(FName("CameraSocket"));
+
+			// check ADS or not
+			const FVector CameraLoc = bIsAiming ? ADSLocation : DefaultCameraLocation;
+
+			// set the interp speed using the ADS time, which can be adjusted per weapon
+			const float InterpSpeed = FVector::Dist(ADSLocation, DefaultCameraLocation) / EquippedWeapon->ADSTime;
+
+			// interp the camera between the locations
+			CameraComponent->SetWorldLocation(FMath::VInterpTo(CameraComponent->GetComponentLocation(), CameraLoc, DeltaTime, InterpSpeed));
+		}
+	}
 }
 
 void AMainCharacter::Restart() 
@@ -1113,6 +1141,9 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartFire);
 	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopFire);
 
+	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AMainCharacter::StartAiming);
+	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AMainCharacter::StopAiming);
+
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMainCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMainCharacter::StopJumping);
 
@@ -1168,6 +1199,51 @@ void AMainCharacter::StartCrouching()
 void AMainCharacter::StopCrouching() 
 {
 	UnCrouch();
+}
+
+bool AMainCharacter::CanAim() const
+{
+	// if player has a weapon, allow ADS
+	return EquippedWeapon != nullptr;
+}
+
+// connects to mouse button to start/stop ADS
+void AMainCharacter::StartAiming() 
+{
+	if (CanAim())
+	{
+		SetAiming(true);
+	}
+}
+
+// connects to mouse button to start/stop ADS
+void AMainCharacter::StopAiming() 
+{
+	SetAiming(false);
+}
+
+void AMainCharacter::SetAiming(const bool bNewAiming) 
+{
+	// if trying to aim, but cannot or are already aiming, do nothing
+	if ((bNewAiming && !CanAim()) || bNewAiming == bIsAiming)
+	{
+		return;
+	}
+
+	// if client, ask server to aim
+	if (!HasAuthority())
+	{
+		ServerSetAiming(bNewAiming);
+	}
+
+	// start aiming
+	bIsAiming = bNewAiming;
+}
+
+void AMainCharacter::ServerSetAiming_Implementation(const bool bNewAiming) 
+{
+	// call set aiming
+	SetAiming(bNewAiming);
 }
 
 #undef LOCTEXT_NAMESPACE

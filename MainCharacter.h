@@ -425,10 +425,29 @@ protected:
 	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate
 	 */
 	void LookUpAtRate(float Rate);
+	
+protected:
+
+	// check for ability to aim
+	bool CanAim() const;
+
+	// start/stop aim
+	void StartAiming();
+	void StopAiming();
+
+	// client aiming
+	void SetAiming(const bool bNewAiming);
+
+	// server aiming
+	UFUNCTION(Server, Reliable)
+	void ServerSetAiming(const bool bNewAiming);
+
+	// check if currently aiming, rep from server to other clients so they can see your ADS animation
+	UPROPERTY(Transient, Replicated)
+	bool bIsAiming;
 
 public:	
 
-	
 	void StartReload();
 
 	// Called to bind functionality to input
@@ -438,5 +457,9 @@ public:
 	// if killer is null than still alive, otherwise are dead
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE bool IsAlive() const { return Killer == nullptr; };
+
+	// check for aiming
+	UFUNCTION(BlueprintPure, Category = "Weapons")
+	FORCEINLINE bool IsAiming() const { return bIsAiming; }
 
 };
