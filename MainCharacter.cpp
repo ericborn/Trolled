@@ -57,10 +57,6 @@ AMainCharacter::AMainCharacter()
  	// Set this character to call Tick() every frame.  You can turn this off to improve performance if you don't need it.
 	PrimaryActorTick.bCanEverTick = true;
 
-	// set our turn rates for input
-	BaseTurnRate = 45.f;
-	BaseLookUpRate = 45.f;
-
 	// creates a spring arm, attach to camera socket with a 0 length, length changed on character death
 	// repsonsible for keeping the camera from clipping into walls
 	SpringArmComponent = CreateDefaultSubobject<USpringArmComponent>("SpringArmComponent");
@@ -279,14 +275,14 @@ void AMainCharacter::SetLootSource(class UInventoryComponent* NewLootSource)
 		// original designers intent is that corpses only stay in the world for 2 minutes after death
 		// if you just start looting the body, it keeps it from despawning for another 2 minutes
 		// I dont like this design choice and will find a way to destroy the body but keep loot on the ground
-		// if (NewLootSource)
-		// {
-		// 	// Looting a player keeps their body alive for an extra 2 minutes to provide enough time to loot their items
-		// 	if (ASurvivalCharacter* Character = Cast<AMainCharacter>(NewLootSource->GetOwner()))
-		// 	{
-		// 		Character->SetLifeSpan(120.f);
-		// 	}
-		// }
+		if (NewLootSource)
+		{
+			// Looting a player keeps their body alive for an extra 2 minutes to provide enough time to loot their items
+			if (AMainCharacter* Character = Cast<AMainCharacter>(NewLootSource->GetOwner()))
+			{
+				Character->SetLifeSpan(120.f);
+			}
+		}
 
 		// set loot source to the new player who is looting
 		LootSource = NewLootSource;
@@ -901,14 +897,11 @@ void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, clas
 {
 	// code version
 	// set killer to character coming into the function
-	// !!!Wont compile!!!!
-	Killer = Character;
+	//Killer = Character;
 
 	// video version
 	// cast to player from the event instigators pawn
 	// event instigator is the controller that caused the damage
-	// !!!Wont compile!!!!
-	//Killer = Cast<AMainCharacter>(EventInstigator->GetPawn());
 	Killer = Cast<AMainCharacter>(GetInstigator());
 	OnRep_Killer();
 }
@@ -937,6 +930,7 @@ void AMainCharacter::OnRep_Killer()
 	
 	// wont compile
 	//bReplicateMovement = false;
+	SetReplicateMovement(false);
 
 	// set loot interaction to active
 	LootPlayerInteraction->Activate();
@@ -990,11 +984,6 @@ void AMainCharacter::UseItem(class UBaseItem* Item)
 {
 	// other way to check if you're the client, as the server is ROLE_Authority
 	// check for valid item, tell the server to use item to prevent cheating
-	
-	//if (Role < ROLE_Authority && Item)
-	// version above from video throws error: 
-	// AActor::Role cannot access private member declared in class 'AActor'
-	// Using auth check below which has been used in previous videos
 	if(!HasAuthority() && Item)
 	{
 		ServerUseItem(Item);
@@ -1033,10 +1022,6 @@ void AMainCharacter::DropItem(class UBaseItem* Item, const int32 Quantity)
 	// look for valid inventory, item and item in inventory
 	if (PlayerInventory && Item && PlayerInventory->FindItem(Item))
 	{
-		//if (Role < ROLE_Authority && Item)
-		// version above from video throws error: 
-		// AActor::Role cannot access private member declared in class 'AActor'
-		// Using auth check below which has been used in previous videos
 		if(!HasAuthority() && Item)
 		{
 			ServerDropItem(Item, Quantity);
@@ -1139,26 +1124,11 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 
 	PlayerInputComponent->BindAxis("MoveForward", this, &AMainCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMainCharacter::MoveRight);
-
-	// We have 2 versions of the rotation bindings to handle different kinds of devices differently
-	// "turn" handles devices that provide an absolute delta, such as a mouse.
-	// "turnrate" is for devices that we choose to treat as a rate of change, such as an analog joystick
-	PlayerInputComponent->BindAxis("Turn", this, &APawn::AddControllerYawInput);
-	PlayerInputComponent->BindAxis("TurnRate", this, &AMainCharacter::TurnAtRate);
-	PlayerInputComponent->BindAxis("LookUp", this, &APawn::AddControllerPitchInput);
-	PlayerInputComponent->BindAxis("LookUpRate", this, &AMainCharacter::LookUpAtRate);
 }
 
-void AMainCharacter::TurnAtRate(float Rate)
+void AMainCharacter::StartReload() 
 {
-	// calculate delta for this frame from the rate information
-	AddControllerYawInput(Rate * BaseTurnRate * GetWorld()->GetDeltaSeconds());
-}
-
-void AMainCharacter::LookUpAtRate(float Rate)
-{
-	// calculate delta for this frame from the rate information
-	AddControllerPitchInput(Rate * BaseLookUpRate * GetWorld()->GetDeltaSeconds());
+	
 }
 
 void AMainCharacter::MoveForward(float Value)

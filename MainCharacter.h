@@ -93,13 +93,13 @@ public:
 	UPROPERTY(EditAnywhere, Category = "Components")
 	class USkeletalMeshComponent* BackpackMesh;
 
-	/** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
-	float BaseTurnRate;
+	// /** Base turn rate, in deg/sec. Other scaling may affect final turn rate. */
+	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	// float BaseTurnRate;
 
-	/** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
-	UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
-	float BaseLookUpRate;
+	// /** Base look up/down rate, in deg/sec. Other scaling may affect final rate. */
+	// UPROPERTY(VisibleAnywhere, BlueprintReadOnly, Category=Camera)
+	// float BaseLookUpRate;
 
 protected:
 	// Called when the game starts or when spawned
@@ -427,7 +427,16 @@ protected:
 	void LookUpAtRate(float Rate);
 
 public:	
+
+	
+	void StartReload();
+
 	// Called to bind functionality to input
 	virtual void SetupPlayerInputComponent(class UInputComponent* PlayerInputComponent) override;
+
+	// used to check if r should reload or respawn
+	// if killer is null than still alive, otherwise are dead
+	UFUNCTION(BlueprintPure)
+	FORCEINLINE bool IsAlive() const { return Killer == nullptr; };
 
 };
