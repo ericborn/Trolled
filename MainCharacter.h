@@ -237,6 +237,10 @@ public:
 	void EquipGear(class UGearItem* Gear);
 	void UnEquipGear(const EEquippableSlot Slot);
 
+	// These should never be called directly - UGearItem and UWeaponItem call these on top of EquipItem
+	void EquipWeapon(class AWeaponItem* WeaponItem);
+	void UnEquipWeapon();
+
 	// called to update the inventory UI when an item is equipped or unequipped
 	UPROPERTY(BlueprintAssignable, Category = "Items")
 	FOnEquippedItemsChanged OnEquippedItemsChanged;

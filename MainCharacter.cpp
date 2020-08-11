@@ -15,6 +15,7 @@
 #include "Trolled/Player/TrolledPlayerController.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Trolled/Weapons/TrolledDamageTypes.h"
+#include "Trolled/Weapons/Weapon.h
 #include "Trolled/Items/EquippableItem.h"
 #include "Trolled/World/PickupBase.h"
 #include "Trolled/Items/GearItem.h"
@@ -652,6 +653,16 @@ void AMainCharacter::UnEquipGear(const EEquippableSlot Slot)
 			EquippableMesh->SetSkeletalMesh(nullptr);
 		}
 	}
+}
+
+void AMainCharacter::EquipWeapon(class AWeaponItem* WeaponItem) 
+{
+	
+}
+
+void AMainCharacter::UnEquipWeapon() 
+{
+	
 }
 
 class USkeletalMeshComponent* AMainCharacter::GetSlotSkeletalMeshComponent(const EEquippableSlot Slot) 
