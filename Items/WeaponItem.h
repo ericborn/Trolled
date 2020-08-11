@@ -9,7 +9,7 @@
 /**
  * 
  */
-UCLASS()
+UCLASS(Blueprintable)
 class TROLLED_API UWeaponItem : public UEquippableItem
 {
 	GENERATED_BODY()

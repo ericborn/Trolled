@@ -350,10 +350,10 @@ protected:
 	void OnRep_EquippedWeapon();
 
 	// called when left mouse button is pressed
-	void StartAttack();
+	void StartFire();
 
 	// called when left mouse button is released
-	void StopAttack();
+	void StopFire();
 
 	// perform melee
 	void BeginMeleeAttack();

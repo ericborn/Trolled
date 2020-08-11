@@ -15,11 +15,11 @@
 #include "Trolled/Player/TrolledPlayerController.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Trolled/Weapons/TrolledDamageTypes.h"
-#include "Trolled/Weapons/Weapon.h"
 #include "Trolled/Items/EquippableItem.h"
 #include "Trolled/Items/WeaponItem.h"
 #include "Trolled/World/PickupBase.h"
 #include "Trolled/Items/GearItem.h"
+#include "Trolled/Weapons/Weapon.h"
 #include "Trolled/Trolled.h"
 #include "Materials/MaterialInstance.h"
 
@@ -170,6 +170,9 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	// replicate the loot source to all characters
 	DOREPLIFETIME(AMainCharacter, LootSource);
+
+	// replicate current weapon
+	DOREPLIFETIME(AMainCharacter, EquippedWeapon);
 
 	// replicate who killed the player
 	DOREPLIFETIME(AMainCharacter, Killer);
@@ -660,32 +663,40 @@ void AMainCharacter::EquipWeapon(class UWeaponItem* WeaponItem)
 	// if weapon and class are valid and is server
 	if (WeaponItem && WeaponItem->WeaponClass && HasAuthority())
 	{
-		// if weapon already equipped, unequip
+		// if weapon already equipped, unequip first
 		if (EquippedWeapon)
 		{
 			UnEquipWeapon();
 		}
 
-		// spawn the weapon in, disable weapons collision
+		// setup spawn parameters, disable weapons collision, set owner to local player
 		FActorSpawnParameters SpawnParams;
 		SpawnParams.bNoFail = true;
 		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
 		SpawnParams.Owner = SpawnParams.Instigator = this;
 
+		// spawn the weapon in with the class and spawn params
 		if (AWeapon* Weapon = GetWorld()->SpawnActor<AWeapon>(WeaponItem->WeaponClass, SpawnParams))
 		{
 			Weapon->BaseItem = WeaponItem;
 
 			EquippedWeapon = Weapon;
+			
+			// rep to clients
 			OnRep_EquippedWeapon();
 
+			// attach mesh to pawn
 			Weapon->OnEquip();
 		}
 	}
 }
 
+// TODO:
+// Probably need to modify destroying the weapon to prevent the dumping of all ammo back into inventory 
+// and forcing reload on reequip
 void AMainCharacter::UnEquipWeapon()
 {
+	// check server and weapon currently equipped
 	if (HasAuthority() && EquippedWeapon)
 	{
 		EquippedWeapon->OnUnEquip();
@@ -785,25 +796,25 @@ void AMainCharacter::OnRep_EquippedWeapon()
 	}
 }
 
-void AMainCharacter::StartAttack() 
+void AMainCharacter::StartFire() 
 {
-	// used once weapons are implemented
-	// if (EquippedWeapon)
-	// {
-	// 	EquippedWeapon->StartAttack();
-	// }
-	// else
-	// {
-	// 	BeginMeleeAttack();
-	// }
-
-	// perform melee
-	BeginMeleeAttack();
+	// if weapon equipped, use it, otherwise melee
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->StartFire();
+	}
+	else
+	{
+		BeginMeleeAttack();
+	}
 }
 
-void AMainCharacter::StopAttack() 
+void AMainCharacter::StopFire() 
 {
-	
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->StopFire();
+	}
 }
 
 void AMainCharacter::BeginMeleeAttack() 
@@ -1114,8 +1125,8 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	// was here by default
 	//check(PlayerInputComponent);
 
-	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartAttack);
-	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopAttack);
+	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartFire);
+	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopFire);
 
 	PlayerInputComponent->BindAction("Jump", IE_Pressed, this, &AMainCharacter::Jump);
 	PlayerInputComponent->BindAction("Jump", IE_Released, this, &AMainCharacter::StopJumping);
