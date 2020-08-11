@@ -7,13 +7,6 @@
 #include "TrolledDamageTypes.generated.h"
 
 UCLASS()
-class TROLLED_API UTrolledDamageTypes : public UDamageType
-{
-	GENERATED_BODY()
-	
-};
-
-UCLASS()
 class UTrolledDamageBase : public UDamageType
 {
 	GENERATED_BODY()

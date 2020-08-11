@@ -3,10 +3,12 @@
 
 #include "Weapon.h"
 #include "Trolled/Trolled.h"
-
 #include "Trolled/Player/TrolledPlayerController.h"
-#include "Trolled/MainCharacter.h"
 #include "Trolled/Components/InventoryComponent.h"
+#include "Trolled/Items/EquippableItem.h"
+#include "Trolled/Items/WeaponItem.h"
+#include "Trolled/MainCharacter.h"
+#include "Trolled/Items/AmmoItem.h"
 
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/AudioComponent.h"
@@ -16,9 +18,7 @@
 #include "Sound/SoundCue.h"
 
 #include "Net/UnrealNetwork.h"
-#include "Items/EquippableItem.h"
-#include "Items/AmmoItem.h"
-#include "Items/WeaponItem.h"
+
 #include "DrawDebugHelpers.h"
 
 #include "Components/SkeletalMeshComponent.h"
@@ -49,8 +49,9 @@ AWeapon::AWeapon()
 	bPendingReload = false;
 	bPendingEquip = false;
 	CurrentState = EWeaponState::Idle;
-	AttachSocket1P = FName("GripPoint");
-	AttachSocket3P = FName("GripPoint");
+	AttachSocket = FName("GripPoint");
+	//AttachSocket1P = FName("GripPoint");
+	//AttachSocket3P = FName("GripPoint");
 
 	CurrentAmmoInMag = 0;
 	BurstCounter = 0;
@@ -139,7 +140,7 @@ void AWeapon::ConsumeAmmo(const int32 Amount)
 			if (UBaseItem* AmmoItem = Inventory->FindItemByClass(WeaponConfig.AmmoClass))
 			{
 				// consume the ammo
-				Inventory->ConsumeItem(AmmoItem, Amount);
+				Inventory->ConsumeQuantity(AmmoItem, Amount);
 			}
 		}
 	}
@@ -252,9 +253,9 @@ bool AWeapon::IsAttachedToPawn() const
 void AWeapon::StartFire()
 {
 	// if not the server, ask server to start firing
-	// may not work, other areas of code using (Role < ROLE_Authority) have failed to compile
-	// if (!HasAuthority()) should be used if it doesn't compile
-	if (Role < ROLE_Authority)
+	// doesnt compile
+	// if (Role < ROLE_Authority)
+	if (!HasAuthority())
 	{
 		// ask the server to start firing
 		ServerStartFire();
@@ -272,9 +273,9 @@ void AWeapon::StartFire()
 void AWeapon::StopFire()
 {
 	// if not the server, valid pawn and locally controlled
-	// may not work, other areas of code using (Role < ROLE_Authority) have failed to compile
-	// if (!HasAuthority()) should be used if it doesn't compile
-	if ((Role < ROLE_Authority) && PawnOwner && PawnOwner->IsLocallyControlled())
+	// (Role < ROLE_Authority) fails to compile, changed to (!HasAuthority())
+	//if ((Role < ROLE_Authority) && PawnOwner && PawnOwner->IsLocallyControlled())
+	if ((!HasAuthority()) && PawnOwner && PawnOwner->IsLocallyControlled())
 	{
 		// ask the server to stop firing
 		ServerStopFire();
@@ -293,9 +294,9 @@ void AWeapon::StopFire()
 void AWeapon::StartReload(bool bFromReplication /*= false*/)
 {
 	// if local player and not the server
-	// may not work, other areas of code using Role < ROLE_Authority have failed to compile
-	// if (!HasAuthority()) should be used if it doesn't compile
-	if (!bFromReplication && Role < ROLE_Authority)
+	// (Role < ROLE_Authority) fails to compile, changed to (!HasAuthority())
+	// if (!bFromReplication && Role < ROLE_Authority)
+	if (!bFromReplication && !HasAuthority())
 	{
 		// ask server to reload
 		ServerStartReload();
@@ -443,16 +444,16 @@ class AMainCharacter* AWeapon::GetPawnOwner() const
 }
 
 // set the weapon owner to a main character
-void AWeapon::SetPawnOwner(AMainCharacter* Character)
+void AWeapon::SetPawnOwner(AMainCharacter* MainCharacter)
 {
 	// if the owner is not the character
-	if (PawnOwner != Character)
+	if (PawnOwner != MainCharacter)
 	{
 		// set the instigator and owner to the character
-		Instigator = Character;
-		PawnOwner = Character;
+		SetInstigator(MainCharacter);
+		PawnOwner = MainCharacter;
 		// net owner for RPC calls
-		SetOwner(Character);
+		SetOwner(MainCharacter);
 	}
 }
 
@@ -589,10 +590,8 @@ void AWeapon::SimulateWeaponFire()
 	// animations
 	if (!bLoopedFireAnim || !bPlayingFireAnim)
 	{
-		// video code
-		//FWeaponAnim AnimToPlay = PawnOwner->IsAiming() || PawnOwner->IsLocallyControlled() ? FireAimingAnim : FireAnim;
-
-		// final code
+		
+		// commented out until IsAiming() is implemented
 		FWeaponAnim AnimToPlay = FireAnim; //PawnOwner->IsAiming() || PawnOwner->IsLocallyControlled() ? FireAimingAnim : FireAnim;
 		PlayWeaponAnimation(FireAnim);
 		bPlayingFireAnim = true;
@@ -616,11 +615,11 @@ void AWeapon::SimulateWeaponFire()
 	if (PC != NULL && PC->IsLocalController())
 	{
 		// recoil not in video
-		if (RecoilCurve)
-		{
-			const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
-			PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed);
-		}
+		// if (RecoilCurve)
+		// {
+		// 	const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
+		// 	PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed);
+		// }
 
 		if (FireCameraShake != NULL)
 		{
@@ -670,17 +669,23 @@ void AWeapon::StopSimulatingWeaponFire()
 
 void AWeapon::HandleHit(const FHitResult& Hit, class AMainCharacter* HitPlayer /*= nullptr*/)
 {
+	// check for the hit to be on an actor
 	if (Hit.GetActor())
 	{
+		// log the hit
 		UE_LOG(LogTemp, Warning, TEXT("Hit actor %s"), *Hit.GetActor()->GetName());
 	}
 
+	// pass to the server
 	ServerHandleHit(Hit, HitPlayer);
 
+	// check for valid hit player and shooter
 	if (HitPlayer && PawnOwner)
 	{
+		// the pawn owner is a valid controller
 		if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(PawnOwner->GetController()))
 		{
+			// show hit marker on UI
 			PC->OnHitPlayer();
 		}
 	}
@@ -690,9 +695,10 @@ void AWeapon::ServerHandleHit_Implementation(const FHitResult& Hit, class AMainC
 {
 	if (PawnOwner)
 	{
+		// set damage multiplier
 		float DamageMultiplier = 1.f;
 
-		/**Certain bones like head might give extra damage if hit. Apply those.*/
+		// Certain bones like head might give extra damage if hit. Apply those.
 		for (auto& BoneDamageModifier : HitScanConfig.BoneDamageModifiers)
 		{
 			if (Hit.BoneName == BoneDamageModifier.Key)
@@ -704,7 +710,350 @@ void AWeapon::ServerHandleHit_Implementation(const FHitResult& Hit, class AMainC
 
 		if (HitPlayer)
 		{
+			// apply point damage
 			UGameplayStatics::ApplyPointDamage(HitPlayer, HitScanConfig.Damage * DamageMultiplier, (Hit.TraceStart - Hit.TraceEnd).GetSafeNormal(), Hit, PawnOwner->GetController(), this, HitScanConfig.DamageType);
 		}
 	}
+}
+
+// validate the hit
+bool AWeapon::ServerHandleHit_Validate(const FHitResult& Hit, class AMainCharacter* HitPlayer /*= nullptr*/)
+{
+	return true;
+}
+
+
+void AWeapon::FireShot()
+{
+	if (PawnOwner)
+	{
+		if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(PawnOwner->GetController()))
+		{
+			if (RecoilCurve)
+			{
+				// apply recoil to the controller
+				const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
+				//PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed, FireCameraShake);
+			}
+
+			// get the players aim
+			FVector CamLoc;
+			FRotator CamRot;
+			PC->GetPlayerViewPoint(CamLoc, CamRot);
+
+			FHitResult Hit;
+			FCollisionQueryParams QueryParams;
+			
+			// ignore self from bullets colliding
+			QueryParams.AddIgnoredActor(this);
+			QueryParams.AddIgnoredActor(PawnOwner);
+
+			// commented out until the character has an IsAiming function
+			FVector FireDir = CamRot.Vector();// PawnOwner->IsAiming() ? CamRot.Vector() : FMath::VRandCone(CamRot.Vector(), FMath::DegreesToRadians(PawnOwner->IsAiming() ? 0.f : 5.f));
+			
+			// trace from camera to max fire distance
+			FVector TraceStart = CamLoc;
+			FVector TraceEnd = (FireDir * HitScanConfig.Distance) + CamLoc;
+
+			// if there was a hit
+			if (GetWorld()->LineTraceSingleByChannel(Hit, TraceStart, TraceEnd, COLLISION_WEAPON, QueryParams))
+			{
+				// store who was hit
+				AMainCharacter* HitChar = Cast<AMainCharacter>(Hit.GetActor());
+
+				// hit that play
+				HandleHit(Hit, HitChar);
+
+				// draw a debug point to indicate the shot
+				FColor PointColor = FColor::Red;
+				DrawDebugPoint(GetWorld(), Hit.ImpactPoint, 5.f, PointColor, false, 30.f);
+			}
+		}
+	}
+}
+
+// adjusts subsequent shots for automatic weapons, smoothing out the rapid fire
+void AWeapon::HandleReFiring()
+{
+	UWorld* MyWorld = GetWorld();
+
+	float SlackTimeThisFrame = FMath::Max(0.0f, (MyWorld->TimeSeconds - LastFireTime) - WeaponConfig.TimeBetweenShots);
+
+	if (bAllowAutomaticWeaponCatchup)
+	{
+		TimerIntervalAdjustment -= SlackTimeThisFrame;
+	}
+
+	HandleFiring();
+}
+
+// client side shooting
+void AWeapon::HandleFiring()
+{
+	// check for ammo and can fire
+	if ((CurrentAmmoInMag > 0) && CanFire())
+	{
+		// if the player, ask server to start shooting
+		if (GetNetMode() != NM_DedicatedServer)
+		{
+			SimulateWeaponFire();
+		}
+
+		// if local, fire, use ammo increment burst counter
+		if (PawnOwner && PawnOwner->IsLocallyControlled())
+		{
+			FireShot();
+			UseMagAmmo();
+
+			// update firing FX on remote clients if function was called on server
+			BurstCounter++;
+		}
+	}
+	// allow reload
+	else if (CanReload())
+	{
+		StartReload();
+	}
+	else if (PawnOwner && PawnOwner->IsLocallyControlled())
+	{
+		// if player runs out of ammo
+		if (GetCurrentAmmo() == 0 && !bRefiring)
+		{
+			// play out of ammo sound fx for local player
+			PlayWeaponSound(OutOfAmmoSound);
+			ATrolledPlayerController* MyPC = Cast<ATrolledPlayerController>(PawnOwner->Controller);
+		}
+
+		// stop weapon fire FX, but stay in Firing state
+		if (BurstCounter > 0)
+		{
+			OnBurstFinished();
+		}
+	}
+
+	if (PawnOwner && PawnOwner->IsLocallyControlled())
+	{
+
+		// if local player and not the server
+		// doesnt work, changed to has authority
+		//if (Role < ROLE_Authority)
+		if (!HasAuthority())
+		{
+			ServerHandleFiring();
+		}
+
+		// auto reload after firing last round
+		if (CurrentAmmoInMag <= 0 && CanReload())
+		{
+			StartReload();
+		}
+
+		// setup refire timer
+		bRefiring = (CurrentState == EWeaponState::Firing && WeaponConfig.TimeBetweenShots > 0.0f);
+		if (bRefiring)
+		{
+			GetWorldTimerManager().SetTimer(TimerHandle_HandleFiring, this, &AWeapon::HandleReFiring, FMath::Max<float>(WeaponConfig.TimeBetweenShots + TimerIntervalAdjustment, SMALL_NUMBER), false);
+			TimerIntervalAdjustment = 0.f;
+		}
+	}
+
+	LastFireTime = GetWorld()->GetTimeSeconds();
+}
+
+void AWeapon::OnBurstStarted()
+{
+	// start firing, can be delayed to satisfy TimeBetweenShots
+	const float GameTime = GetWorld()->GetTimeSeconds();
+	if (LastFireTime > 0 && WeaponConfig.TimeBetweenShots > 0.0f &&
+		LastFireTime + WeaponConfig.TimeBetweenShots > GameTime)
+	{
+		GetWorldTimerManager().SetTimer(TimerHandle_HandleFiring, this, &AWeapon::HandleFiring, LastFireTime + WeaponConfig.TimeBetweenShots - GameTime, false);
+	}
+	else
+	{
+		HandleFiring();
+	}
+}
+
+void AWeapon::OnBurstFinished()
+{
+	// stop firing FX on remote clients
+	BurstCounter = 0;
+
+	// stop firing FX locally, unless it's a dedicated server
+	if (GetNetMode() != NM_DedicatedServer)
+	{
+		StopSimulatingWeaponFire();
+	}
+
+	GetWorldTimerManager().ClearTimer(TimerHandle_HandleFiring);
+	bRefiring = false;
+
+	// reset firing interval adjustment
+	TimerIntervalAdjustment = 0.0f;
+}
+
+void AWeapon::SetWeaponState(EWeaponState NewState)
+{
+	const EWeaponState PrevState = CurrentState;
+
+	// if currently shooting but stop
+	if (PrevState == EWeaponState::Firing && NewState != EWeaponState::Firing)
+	{
+		OnBurstFinished();
+	}
+
+	CurrentState = NewState;
+
+	// if not currently shooting but start
+	if (PrevState != EWeaponState::Firing && NewState == EWeaponState::Firing)
+	{
+		OnBurstStarted();
+	}
+}
+
+// sets the state of the weapon based upon whats currently happening
+void AWeapon::DetermineWeaponState()
+{
+	EWeaponState NewState = EWeaponState::Idle;
+
+	if (bIsEquipped)
+	{
+		if (bPendingReload)
+		{
+			if (CanReload() == false)
+			{
+				NewState = CurrentState;
+			}
+			else
+			{
+				NewState = EWeaponState::Reloading;
+			}
+		}
+		else if ((bPendingReload == false) && (bWantsToFire == true) && (CanFire() == true))
+		{
+			NewState = EWeaponState::Firing;
+		}
+	}
+	else if (bPendingEquip)
+	{
+		NewState = EWeaponState::Equipping;
+	}
+
+	SetWeaponState(NewState);
+}
+
+void AWeapon::AttachMeshToPawn()
+{
+	if (PawnOwner)
+	{
+		// Remove and hide both first and third person meshes
+		DetachMeshFromPawn();
+
+		USkeletalMeshComponent* PawnMesh = PawnOwner->GetMesh();
+		AttachToComponent(PawnOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
+	}
+}
+
+// TODO:
+// Video states the weapon is destroyed on unequip, needs to be changed so the weapon retains its ammo
+void AWeapon::DetachMeshFromPawn()
+{
+
+}
+
+// play the weapon sound
+UAudioComponent* AWeapon::PlayWeaponSound(USoundCue* Sound)
+{
+	UAudioComponent* AC = NULL;
+	if (Sound && PawnOwner)
+	{
+		AC = UGameplayStatics::SpawnSoundAttached(Sound, PawnOwner->GetRootComponent());
+	}
+
+	return AC;
+}
+
+// play the weapon animation
+float AWeapon::PlayWeaponAnimation(const FWeaponAnim& Animation)
+{
+	float Duration = 0.0f;
+	if (PawnOwner)
+	{
+		UAnimMontage* UseAnim = PawnOwner->IsLocallyControlled() ? Animation.Pawn1P : Animation.Pawn3P;
+		if (UseAnim)
+		{
+			Duration = PawnOwner->PlayAnimMontage(UseAnim);
+		}
+	}
+
+	return Duration;
+}
+
+void AWeapon::StopWeaponAnimation(const FWeaponAnim& Animation)
+{
+	if (PawnOwner)
+	{
+		UAnimMontage* UseAnim = PawnOwner->IsLocallyControlled() ? Animation.Pawn1P : Animation.Pawn3P;
+		if (UseAnim)
+		{
+			PawnOwner->StopAnimMontage(UseAnim);
+		}
+	}
+}
+
+// probably not used, i think this is handled inside of the fireshot function
+// FVector AWeapon::GetCameraAim() const
+// {
+// 	ATrolledPlayerController* const PlayerController = Instigator ? Cast<ATrolledPlayerController>(Instigator->Controller) : NULL;
+// 	FVector FinalAim = FVector::ZeroVector;
+
+// 	if (PlayerController)
+// 	{
+// 		FVector CamLoc;
+// 		FRotator CamRot;
+// 		PlayerController->GetPlayerViewPoint(CamLoc, CamRot);
+// 		FinalAim = CamRot.Vector();
+// 	}
+// 	else if (Instigator)
+// 	{
+// 		FinalAim = Instigator->GetBaseAimRotation().Vector();
+// 	}
+
+// 	return FinalAim;
+// }
+
+// trace for determining hits with weapon
+FHitResult AWeapon::WeaponTrace(const FVector& StartTrace, const FVector& EndTrace) const
+{
+	// Perform trace to retrieve hit info
+	FCollisionQueryParams TraceParams(SCENE_QUERY_STAT(WeaponTrace), true, GetInstigator());
+	TraceParams.bReturnPhysicalMaterial = true;
+
+	FHitResult Hit(ForceInit);
+	GetWorld()->LineTraceSingleByChannel(Hit, StartTrace, EndTrace, COLLISION_WEAPON, TraceParams);
+
+	return Hit;
+}
+
+// server side for shooting
+void AWeapon::ServerHandleFiring_Implementation()
+{
+	const bool bShouldUpdateAmmo = (CurrentAmmoInMag > 0 && CanFire());
+
+	HandleFiring();
+
+	if (bShouldUpdateAmmo)
+	{
+		// update ammo
+		UseMagAmmo();
+
+		// update firing FX on remote clients
+		BurstCounter++;
+	}
+}
+
+bool AWeapon::ServerHandleFiring_Validate()
+{
+	return true;
 }

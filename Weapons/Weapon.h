@@ -78,7 +78,7 @@ struct FHitScanConfiguration
 		Distance = 10000.f;
 		Damage = 25.f;
 		Radius = 0.f;
-		DamageType = UWeaponDamage::StaticClass();
+		DamageType = UDamageType::StaticClass();
 		ClientSideHitLeeway = 300.f;
 	}
 
@@ -214,7 +214,7 @@ protected:
 
 	// The weapon item in the players inventory
 	UPROPERTY(Replicated, BlueprintReadOnly, Transient)
-	class UWeaponItem* Item;
+	class UWeaponItem* BaseItem;
 
 	// pawn owner 
 	UPROPERTY(Transient, ReplicatedUsing = OnRep_PawnOwner)
@@ -252,13 +252,17 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
 	FName MuzzleAttachPoint;
 
-	//Name of the socket to attach to the character on
-	UPROPERTY(EditDefaultsOnly, Category = Effects)
-	FName AttachSocket1P;
+	// //Name of the socket to attach to the character on
+	// UPROPERTY(EditDefaultsOnly, Category = Effects)
+	// FName AttachSocket1P;
 
-	//Name of the socket to attach to the character on
+	// //Name of the socket to attach to the character on
+	// UPROPERTY(EditDefaultsOnly, Category = Effects)
+	// FName AttachSocket3P;
+
+	// Name of the socket to attach to the character on
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
-	FName AttachSocket3P;
+	FName AttachSocket;
 
 	// FX for muzzle flash 
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
@@ -371,6 +375,9 @@ protected:
 
 	// weapon is refiring 
 	uint32 bRefiring;
+
+	/** current weapon state */
+	EWeaponState CurrentState;
 
 	// time of last successful weapon fire 
 	float LastFireTime;

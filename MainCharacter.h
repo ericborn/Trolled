@@ -238,7 +238,7 @@ public:
 	void UnEquipGear(const EEquippableSlot Slot);
 
 	// These should never be called directly - UGearItem and UWeaponItem call these on top of EquipItem
-	void EquipWeapon(class AWeaponItem* WeaponItem);
+	void EquipWeapon(class UWeaponItem* WeaponItem);
 	void UnEquipWeapon();
 
 	// called to update the inventory UI when an item is equipped or unequipped
@@ -252,6 +252,10 @@ public:
 	// helper function that exposes the equipment map to see whats currently equipped
 	UFUNCTION(BlueprintPure)
 	FORCEINLINE TMap<EEquippableSlot, UEquippableItem*> GetEquippedItems() const { return EquippedItems; }
+
+	// helper to find the equipped weapon
+	UFUNCTION(BlueprintCallable, Category = "Weapons")
+	FORCEINLINE class AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
 
 protected:
 	
@@ -338,6 +342,12 @@ public:
 	void OnThirstModified(const float ThirstDelta);
 
 protected:
+
+	UPROPERTY(VisibleAnywhere, ReplicatedUsing = OnRep_EquippedWeapon)
+	class AWeapon* EquippedWeapon;
+
+	UFUNCTION()
+	void OnRep_EquippedWeapon();
 
 	// called when left mouse button is pressed
 	void StartAttack();

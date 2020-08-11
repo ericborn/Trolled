@@ -15,8 +15,9 @@
 #include "Trolled/Player/TrolledPlayerController.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Trolled/Weapons/TrolledDamageTypes.h"
-#include "Trolled/Weapons/Weapon.h
+#include "Trolled/Weapons/Weapon.h"
 #include "Trolled/Items/EquippableItem.h"
+#include "Trolled/Items/WeaponItem.h"
 #include "Trolled/World/PickupBase.h"
 #include "Trolled/Items/GearItem.h"
 #include "Trolled/Trolled.h"
@@ -654,15 +655,44 @@ void AMainCharacter::UnEquipGear(const EEquippableSlot Slot)
 		}
 	}
 }
-
-void AMainCharacter::EquipWeapon(class AWeaponItem* WeaponItem) 
+void AMainCharacter::EquipWeapon(class UWeaponItem* WeaponItem)
 {
-	
+	// if weapon and class are valid and is server
+	if (WeaponItem && WeaponItem->WeaponClass && HasAuthority())
+	{
+		// if weapon already equipped, unequip
+		if (EquippedWeapon)
+		{
+			UnEquipWeapon();
+		}
+
+		// spawn the weapon in, disable weapons collision
+		FActorSpawnParameters SpawnParams;
+		SpawnParams.bNoFail = true;
+		SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+		SpawnParams.Owner = SpawnParams.Instigator = this;
+
+		if (AWeapon* Weapon = GetWorld()->SpawnActor<AWeapon>(WeaponItem->WeaponClass, SpawnParams))
+		{
+			Weapon->BaseItem = WeaponItem;
+
+			EquippedWeapon = Weapon;
+			OnRep_EquippedWeapon();
+
+			Weapon->OnEquip();
+		}
+	}
 }
 
-void AMainCharacter::UnEquipWeapon() 
+void AMainCharacter::UnEquipWeapon()
 {
-	
+	if (HasAuthority() && EquippedWeapon)
+	{
+		EquippedWeapon->OnUnEquip();
+		EquippedWeapon->Destroy();
+		EquippedWeapon = nullptr;
+		OnRep_EquippedWeapon();
+	}
 }
 
 class USkeletalMeshComponent* AMainCharacter::GetSlotSkeletalMeshComponent(const EEquippableSlot Slot) 
@@ -745,6 +775,14 @@ void AMainCharacter::OnRep_Thirst(float OldThirst)
 {
 	// rep the modified Thirst value
 	OnThirstModified(Thirst - OldThirst);
+}
+
+void AMainCharacter::OnRep_EquippedWeapon()
+{
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->OnEquip();
+	}
 }
 
 void AMainCharacter::StartAttack() 
@@ -860,6 +898,7 @@ void AMainCharacter::KilledByPlayer(struct FDamageEvent const& DamageEvent, clas
 	// event instigator is the controller that caused the damage
 	// !!!Wont compile!!!!
 	//Killer = Cast<AMainCharacter>(EventInstigator->GetPawn());
+	Killer = Cast<AMainCharacter>(GetInstigator());
 	OnRep_Killer();
 }
 
