@@ -614,12 +614,12 @@ void AWeapon::SimulateWeaponFire()
 	ATrolledPlayerController* PC = (PawnOwner != NULL) ? Cast<ATrolledPlayerController>(PawnOwner->Controller) : NULL;
 	if (PC != NULL && PC->IsLocalController())
 	{
-		// recoil not in video
-		// if (RecoilCurve)
-		// {
-		// 	const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
-		// 	PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed);
-		// }
+		// apply recoil
+		if (RecoilCurve)
+		{
+			const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
+			PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed);
+		}
 
 		if (FireCameraShake != NULL)
 		{
@@ -733,7 +733,7 @@ void AWeapon::FireShot()
 			{
 				// apply recoil to the controller
 				const FVector2D RecoilAmount(RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).X, RecoilCurve->GetVectorValue(FMath::RandRange(0.f, 1.f)).Y);
-				//PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed, FireCameraShake);
+				PC->ApplyRecoil(RecoilAmount, RecoilSpeed, RecoilResetSpeed, FireCameraShake);
 			}
 
 			// get the players aim
