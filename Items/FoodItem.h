@@ -19,16 +19,16 @@ public:
 	UFoodItem();
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float HealthToHeal;
+	float HealAmount;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float StaminaToRecover;
+	float StaminaAmount;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float HungerToRecover;
+	float HungerAmount;
 
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
-	float ThirstToRecover;	
+	float ThirstAmount;	
 
 // override use so food can be consumed
 virtual void Use(class AMainCharacter* Character) override;
