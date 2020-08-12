@@ -261,6 +261,26 @@ public:
 	FORCEINLINE class AWeapon* GetEquippedWeapon() const { return EquippedWeapon; }
 
 protected:
+
+	// server call to use the throwable
+	UFUNCTION(Server, Reliable)
+	void ServerUseThrowable();
+
+	// rep throw animation to other players
+	UFUNCTION(NetMulticast, Unreliable)
+	void MulticastPlayThrowableTossFX(class UAnimMontage* MontageToPlay);
+
+	// get throwable you have
+	class UThrowableItem* GetThrowable() const;
+	
+	// client side call to use throwable
+	void UseThrowable();
+
+	// spawn the mesh
+	void SpawnThrowable();
+
+	// check use is available
+	bool CanUseThrowable() const;
 	
 	// Creates a map of current equipped items, allows for quick access of equipped items
 	UPROPERTY(VisibleAnywhere, Category = "Items")

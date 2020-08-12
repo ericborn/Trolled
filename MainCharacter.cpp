@@ -15,7 +15,9 @@
 #include "Trolled/Player/TrolledPlayerController.h"
 #include "Trolled/Components/InventoryComponent.h"
 #include "Trolled/Weapons/TrolledDamageTypes.h"
+#include "Trolled/Weapons/ThrowableWeapon.h"
 #include "Trolled/Items/EquippableItem.h"
+#include "Trolled/Items/ThrowableItem.h"
 #include "Trolled/Items/WeaponItem.h"
 #include "Trolled/World/PickupBase.h"
 #include "Trolled/Items/GearItem.h"
@@ -53,6 +55,11 @@ void SomeRPCFunction_Implementation( int32 AddHealth )
     Health += AddHealth;
 }
 */
+
+// Seems there are many forms for checking if code is being executed server or client side, not sure on performace differences
+// I am using HasAuthority() to indicate server and !HasAuthority() for client
+// another form used by the tutorials is GetNetMode() != NM_DedicatedServer or Role < ROLE_Authority, which doesnt work in 4.25
+// ROLE_Authority was made private inside aactor and a new method needs to be used for it to work
 
 // Constrcutor of main character, set default values here
 AMainCharacter::AMainCharacter()
@@ -740,6 +747,156 @@ class USkeletalMeshComponent* AMainCharacter::GetSlotSkeletalMeshComponent(const
 	return nullptr;
 }
 
+void AMainCharacter::ServerUseThrowable_Implementation() 
+{
+	UseThrowable();
+}
+
+void AMainCharacter::MulticastPlayThrowableTossFX_Implementation(class UAnimMontage* MontageToPlay) 
+{
+	//Local player already instantly played grenade throw anim
+	// check not the server and not locally controlled, all other players
+	if (!HasAuthority() && !IsLocallyControlled())
+	{
+		// local character plays animation for other local players
+		PlayAnimMontage(MontageToPlay);
+	}
+}
+
+class UThrowableItem* AMainCharacter::GetThrowable() const
+{
+	// setup an empty var for the throwable
+	UThrowableItem* EquippedThrowable = nullptr;
+
+	// if we have a throwable equipped
+	if (EquippedItems.Contains(EEquippableSlot::EIS_Throwable))
+	{
+		// store it in the throwable var
+		EquippedThrowable = Cast<UThrowableItem>(*EquippedItems.Find(EEquippableSlot::EIS_Throwable));
+	}
+
+	// return new var
+	return EquippedThrowable;
+}
+
+// Logic from tutorial seems broken and will cause bugs when running out of throwables
+void AMainCharacter::UseThrowable()
+{
+	// check can use
+	if (CanUseThrowable())
+	{
+		// seems uncessessary since this is exactly what the above check does
+		if (UThrowableItem* Throwable = GetThrowable())
+		{
+			// check server side
+			if (HasAuthority())
+			{
+				// spawn projectile
+				SpawnThrowable();
+
+				// check valid inventory
+				if (PlayerInventory)
+				{
+					// remove item
+					PlayerInventory->ConsumeQuantity(Throwable, 1);
+				}
+			}
+			// may just need to move this else into the HasAuthority above and have it be an else for the if (PlayerInventory)
+			// tutorial says without this code when the last throwable is used the UI will not update to reflect
+			else
+			{
+				// throwable 0 or 1
+				if (Throwable->GetQuantity() <= 1)
+				{
+					// remove item from throwable slot, broadcast to others
+					EquippedItems.Remove(EEquippableSlot::EIS_Throwable);
+					OnEquippedItemsChanged.Broadcast(EEquippableSlot::EIS_Throwable, nullptr);
+				}
+
+				//Locally play grenade throw instantly - by the time server spawns the grenade in the throw animation should roughly sync up with the spawning of the grenade
+				PlayAnimMontage(Throwable->ThrowableTossAnimation);
+				ServerUseThrowable();
+			}
+		}
+	}
+}
+
+// Logic I wrote to test a different way to approach the throwable
+// void AMainCharacter::UseThrowable() 
+// {
+// 	// check for valid throwable
+// 	if (CanUseThrowable())
+// 	{
+// 		// if server
+// 		if (HasAuthority())
+// 		{
+// 			// spawn
+// 			SpawnThrowable();
+			
+// 			// rewritten from tutorial because his logic made no sense
+// 			// if valid inventory and player has 1 or less, remove from throwable slot
+// 			if (PlayerInventory && Throwable->GetQuantity() <= 1)
+// 			{
+// 				EquippedItems.Remove(EEquippableSlot::EIS_Throwable);
+// 				OnEquippedItemsChanged.Broadcast(EEquippableSlot::EIS_Throwable, nullptr);
+// 			}
+// 			// else player has more than 1
+// 			else
+// 			{
+// 				// remove 1 from players inventory
+// 				PlayerInventory->ConsumeQuantity(Throwable, 1);
+// 			}
+// 		}
+
+// 		//Locally play grenade throw instantly - by the time server spawns the grenade in the throw animation should roughly sync up with the spawning of the grenade
+// 		PlayAnimMontage(Throwable->ThrowableTossAnimation);
+// 		ServerUseThrowable();
+// 		}
+// 	}
+// }
+
+void AMainCharacter::SpawnThrowable() 
+{
+	// check is server
+	if (HasAuthority())
+	{
+		// have throwable
+		if (UThrowableItem* CurrentThrowable = GetThrowable())
+		{
+			// seems redundant since thats what get throwable does
+			if (CurrentThrowable->ThrowableClass)
+			{
+				// setup spawn params
+				FActorSpawnParameters SpawnParams;
+				SpawnParams.Owner = SpawnParams.Instigator = this;
+				SpawnParams.bNoFail = true;
+				SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AdjustIfPossibleButAlwaysSpawn;
+
+				// setup vars and store for where player is looking
+				FVector EyesLoc;
+				FRotator EyesRot;
+				GetController()->GetPlayerViewPoint(EyesLoc, EyesRot);
+
+				// spawn throwable slightly in front of our face so it doesnt collide with our player
+				EyesLoc = (EyesRot.Vector() * 20.f) + EyesLoc;
+
+				// check all pre-reqs are met
+				if (AThrowableWeapon* ThrowableWeapon = GetWorld()->SpawnActor<AThrowableWeapon>(CurrentThrowable->ThrowableClass, FTransform(EyesRot, EyesLoc), SpawnParams))
+				{
+					// tell other local players to play animation
+					MulticastPlayThrowableTossFX(CurrentThrowable->ThrowableTossAnimation);
+				}
+			}
+		}
+	}
+}
+
+bool AMainCharacter::CanUseThrowable() const
+{
+	// if we have a throwable equipped and it has the throwable class
+	return GetThrowable() != nullptr && GetThrowable()->ThrowableClass != nullptr;
+}
+
 float AMainCharacter::ModifyHealth(const float Delta) 
 {
 	// takes current health of player
@@ -1144,6 +1301,7 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartFire);
 	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopFire);
+	PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AMainCharacter::UseThrowable);
 
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AMainCharacter::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AMainCharacter::StopAiming);
