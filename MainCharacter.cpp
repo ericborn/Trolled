@@ -1031,6 +1031,10 @@ void AMainCharacter::UseItem(class UBaseItem* Item)
 	// how its used
 	if (Item)
 	{
+		// bp exposed use
+		Item->OnUse(this);
+
+		// cpp exposed use
 		Item->Use(this);
 	}
 }
