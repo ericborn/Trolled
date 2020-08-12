@@ -7,6 +7,9 @@
 #include "Engine/EngineTypes.h"
 #include "MainCharacter.generated.h"
 
+// print screen
+//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
+
 // setup properties for character interacting with objects
 USTRUCT()
 struct FInteractionData

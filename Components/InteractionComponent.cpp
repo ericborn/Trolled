@@ -113,7 +113,6 @@ void UInteractionComponent::StartFocus(class AMainCharacter* Character)
         SetHiddenInGame(false);
 
         // grab visual components, primitive
-        //for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
         // updated for UE 4.25
         for (auto& VisualComp : GetOwner()->GetComponents())
         {
@@ -140,7 +139,6 @@ void UInteractionComponent::StopFocus(class AMainCharacter* Character)
         SetHiddenInGame(true);
 
         // grab visual components, primitive
-        //for (auto& VisualComp : GetOwner()->GetComponentsByClass(UPrimitiveComponent::StaticClass()))
         // updated for UE 4.25
         for (auto& VisualComp : GetOwner()->GetComponents())
         {
