@@ -30,6 +30,12 @@
 // define ADS socket
 static FName NAME_AimDownSightsSocket("ADSSocket");
 
+// print text
+//GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, TEXT("Some debug message!"));
+
+// print variable
+// GEngine->AddOnScreenDebugMessage(-1, 15.0f, FColor::Yellow, FString::Printf(TEXT("Killed by %s!"), DamageCauser));
+
 /*
 !!!server validation!!!
 https://docs.unrealengine.com/en-US/Gameplay/Networking/Actors/RPCs/index.html
@@ -143,9 +149,6 @@ AMainCharacter::AMainCharacter()
 
 	// default to not ADS
 	bIsAiming = false;
-
-	// Hides the head for the player
-	GetMesh()->SetOwnerNoSee(true);
 
 	// Allows the character to crouch
 	GetCharacterMovement()->NavAgentProps.bCanCrouch = true;
@@ -1148,7 +1151,7 @@ void AMainCharacter::OnRep_Killer()
 		if (ATrolledPlayerController* PC = Cast<ATrolledPlayerController>(GetController()))
 		{
 			// wont compile until a died is created on controller, but example code has features also unimplemented
-			//PC->Died(Killer);
+			PC->ShowDeathScreen(Killer);
 		}
 	}
 }
@@ -1301,7 +1304,10 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 
 	PlayerInputComponent->BindAction("Attack", IE_Pressed, this, &AMainCharacter::StartFire);
 	PlayerInputComponent->BindAction("Attack", IE_Released, this, &AMainCharacter::StopFire);
+
 	PlayerInputComponent->BindAction("Throw", IE_Pressed, this, &AMainCharacter::UseThrowable);
+
+	PlayerInputComponent->BindAction("Reload", IE_Pressed, this, &AMainCharacter::StartReload);
 
 	PlayerInputComponent->BindAction("Aim", IE_Pressed, this, &AMainCharacter::StartAiming);
 	PlayerInputComponent->BindAction("Aim", IE_Released, this, &AMainCharacter::StopAiming);
@@ -1321,7 +1327,11 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 
 void AMainCharacter::StartReload() 
 {
-	
+	// if weapon equipped, reload
+	if (EquippedWeapon)
+	{
+		EquippedWeapon->StartReload();
+	}
 }
 
 void AMainCharacter::MoveForward(float Value)

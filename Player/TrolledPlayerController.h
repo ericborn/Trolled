@@ -28,9 +28,6 @@ protected:
 	virtual void SetupInputComponent() override;
 
 public:
-	// Local player dies
-	// void Died(class ASurvivalCharacter* Killer);
-
 	// Blueprint Implementable allows functions to be constructed here
 	// but implemented in BP's so the two can both control the functions
 	UFUNCTION(BlueprintImplementableEvent)
@@ -95,6 +92,7 @@ public:
 	void Turn(float Rate);
 	void LookUp(float Rate);
 
+	// allows reload if alive, otherwise respawn
 	void StartReload();
 
 };
