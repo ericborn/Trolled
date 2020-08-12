@@ -31,6 +31,9 @@ protected:
 	//networking for UObject
 	virtual void GetLifetimeReplicatedProps(TArray<class FLifetimeProperty> & OutLifetimeProps) const override;
 	virtual bool IsSupportedForNetworking() const override;
+	
+	// item needs a reference to the world for bp's to work correctly
+	virtual class UWorld* GetWorld() const override;
 
 // allows changing items while the game is in the editor, when published the ability to modify items is removed
 #if WITH_EDITOR
@@ -39,6 +42,9 @@ protected:
 
 public:
 	UBaseItem();
+
+	UPROPERTY(Transient)
+	class UWorld* World;
 
 	// item mesh
 	UPROPERTY(EditDefaultsOnly, BlueprintReadWrite, Category = "Item")
@@ -114,6 +120,10 @@ public:
 	// function to hide/show items in the inventory
 	UFUNCTION(BlueprintPure, Category = "Item")
 	virtual bool ShouldShowInInventory() const;
+
+	// expose the base item to blueprints so items and be quickly created and modified using BP's
+	UFUNCTION(BlueprintImplementableEvent)
+	void OnUse(class AMainCharacter* Character);
 
 	// use function, can override within the item to change how the use is implemented
 	virtual void Use(class AMainCharacter* Character);

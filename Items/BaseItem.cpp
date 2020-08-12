@@ -22,6 +22,11 @@ bool UBaseItem::IsSupportedForNetworking() const
     return true;
 }
 
+class UWorld* UBaseItem::GetWorld() const 
+{
+    return World;
+}
+
 #if WITH_EDITOR
     void UBaseItem::PostEditChangeProperty(struct FPropertyChangedEvent& PropertyChangedEvent) 
 {
