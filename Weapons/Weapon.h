@@ -253,16 +253,16 @@ protected:
 	FName MuzzleAttachPoint;
 
 	// //Name of the socket to attach to the character on
-	// UPROPERTY(EditDefaultsOnly, Category = Effects)
-	// FName AttachSocket1P;
+	UPROPERTY(EditDefaultsOnly, Category = Effects)
+	FName AttachSocket1P;
 
 	// //Name of the socket to attach to the character on
-	// UPROPERTY(EditDefaultsOnly, Category = Effects)
-	// FName AttachSocket3P;
+	UPROPERTY(EditDefaultsOnly, Category = Effects)
+	FName AttachSocket3P;
 
 	// Name of the socket to attach to the character on
-	UPROPERTY(EditDefaultsOnly, Category = Effects)
-	FName AttachSocket;
+	// UPROPERTY(EditDefaultsOnly, Category = Effects)
+	// FName AttachSocket;
 
 	// FX for muzzle flash 
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
@@ -490,7 +490,7 @@ protected:
 	void AttachMeshToPawn();
 
 	// detaches weapon mesh from pawn's mesh 
-	void DetachMeshFromPawn();
+	//void DetachMeshFromPawn();
 
 //////////////////////////////////////////////////////////////////////////
 // Weapon usage helpers

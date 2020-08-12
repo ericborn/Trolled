@@ -9,18 +9,14 @@
 #include "Trolled/Items/WeaponItem.h"
 #include "Trolled/MainCharacter.h"
 #include "Trolled/Items/AmmoItem.h"
-
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/AudioComponent.h"
 #include "Curves/CurveVector.h"
 #include "Kismet/GameplayStatics.h"
 #include "Particles/ParticleSystemComponent.h"
 #include "Sound/SoundCue.h"
-
 #include "Net/UnrealNetwork.h"
-
 #include "DrawDebugHelpers.h"
-
 #include "Components/SkeletalMeshComponent.h"
 
 // Sets default values
@@ -49,9 +45,9 @@ AWeapon::AWeapon()
 	bPendingReload = false;
 	bPendingEquip = false;
 	CurrentState = EWeaponState::Idle;
-	AttachSocket = FName("GripPoint");
-	//AttachSocket1P = FName("GripPoint");
-	//AttachSocket3P = FName("GripPoint");
+	//AttachSocket = FName("GripPoint");
+	AttachSocket1P = FName("GripPoint");
+	AttachSocket3P = FName("GripPoint");
 
 	CurrentAmmoInMag = 0;
 	BurstCounter = 0;
@@ -96,7 +92,7 @@ void AWeapon::PostInitializeComponents()
 	Super::PostInitializeComponents();
 
 	// detach prior to attaching to clear any previous attachments
-	DetachMeshFromPawn();
+	//DetachMeshFromPawn();
 }
 
 // Called when the game starts or when spawned
@@ -204,8 +200,7 @@ void AWeapon::OnEquipFinished()
 	if (PawnOwner)
 	{
 		// try to reload empty Mag
-		if (PawnOwner->IsLocallyControlled() &&
-			CanReload())
+		if (PawnOwner->IsLocallyControlled() && CanReload())	
 		{
 			StartReload();
 		}
@@ -345,9 +340,10 @@ void AWeapon::StopReload()
 
 void AWeapon::ReloadWeapon()
 {
-	// determine how much ammo can fit in the current mag
-	// const at the start of next line in final code, not in video
-	int32 MagDelta = FMath::Min(WeaponConfig.AmmoPerMag - CurrentAmmoInMag, GetCurrentAmmo());
+	// determine which number is smaller, max ammo per mag minus current ammo in mag, or total current ammo
+	// when a players remaining ammo falls below the amount required to fill a mag, the current ammo will be smaller
+	// and will then be added to the mag
+	const int32 MagDelta = FMath::Min(WeaponConfig.AmmoPerMag - CurrentAmmoInMag, GetCurrentAmmo());
 
 	// if theres more than 0 bullets missing
 	if (MagDelta > 0)
@@ -948,19 +944,23 @@ void AWeapon::AttachMeshToPawn()
 	if (PawnOwner)
 	{
 		// Remove and hide both first and third person meshes
-		DetachMeshFromPawn();
+		//DetachMeshFromPawn();
 
-		USkeletalMeshComponent* PawnMesh = PawnOwner->GetMesh();
-		AttachToComponent(PawnOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
+		if (const USkeletalMeshComponent* PawnMesh = PawnOwner->GetMesh())
+		{
+			// locally controlled, use first person socket, otherwise use 3rd
+			const FName AttachSocket = PawnOwner->IsLocallyControlled() ? AttachSocket1P : AttachSocket3P;
+			AttachToComponent(PawnOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
+		}
 	}
 }
 
 // TODO:
 // Video states the weapon is destroyed on unequip, needs to be changed so the weapon retains its ammo
-void AWeapon::DetachMeshFromPawn()
-{
+// void AWeapon::DetachMeshFromPawn()
+// {
 
-}
+// }
 
 // play the weapon sound
 UAudioComponent* AWeapon::PlayWeaponSound(USoundCue* Sound)
