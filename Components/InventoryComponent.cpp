@@ -229,15 +229,31 @@ void UInventoryComponent::OnRep_InventoryArray()
 	// calls the delegate to update the UI	
 	OnInventoryUpdated.Broadcast();
 
-	// for (auto& Item : InventoryArray)
+	// less performance intense method to set world on items moving into inventory
+	// may miss items if a large number are added to the inventory at once
+	// if inventory has items
+	// if (InventoryArray.Num())
 	// {
-	// 	//On the client the world won't be set initially, so it set if not
-	// 	if (!Item->World)
+	// 	// find the latest item to get added to the inventory
+	// 	if (UBaseItem* NewItem = InventoryArray.Last())
 	// 	{
-	// 		OnItemAdded.Broadcast(Item);
-	// 		Item->World = GetWorld();
+	// 		// set the world of that item
+	// 		NewItem->World = GetWorld();
 	// 	}
 	// }
+
+	// tutorial says this may be overkill and could cause performace hits with large inventories
+	for (auto& Item : InventoryArray)
+	{
+		// check for valid item and item not having a world
+		if (Item && !Item->World)
+		{
+			//OnItemAdded.Broadcast(Item);
+
+			// set the world on the item
+			Item->World = GetWorld();
+		}
+	}
 }
 
 // original method, not sure if items is supposed to ref to the thing i renamed InventoryArray
@@ -266,6 +282,7 @@ UBaseItem* UInventoryComponent::AddItem(class UBaseItem* Item)
 	{
 		// recreates a new item from the item being passed in, but sets the owner to the current player and adds to inventory
 		UBaseItem* NewItem = NewObject<UBaseItem>(GetOwner(), Item->GetClass());
+		NewItem->World = GetWorld();
 		NewItem->SetQuantity(Item->GetQuantity());
 		NewItem->OwningInventory = this;
 		NewItem->AddedToInventory(this);
