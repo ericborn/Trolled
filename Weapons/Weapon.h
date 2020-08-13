@@ -252,15 +252,15 @@ protected:
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
 	FName MuzzleAttachPoint;
 
-	// //Name of the socket to attach to the character on
+	// Name of the socket to attach to the character on
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
 	FName AttachSocket1P;
 
-	// //Name of the socket to attach to the character on
+	// Name of the socket to attach to the character on
 	UPROPERTY(EditDefaultsOnly, Category = Effects)
 	FName AttachSocket3P;
 
-	// Name of the socket to attach to the character on
+	//Name of the socket to attach to the character on
 	// UPROPERTY(EditDefaultsOnly, Category = Effects)
 	// FName AttachSocket;
 

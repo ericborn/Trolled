@@ -120,6 +120,9 @@ protected:
 	// returns the amount of damage the player took from a damage event
 	virtual float TakeDamage(float Damage, struct FDamageEvent const& DamageEvent, AController* EventInstigator, AActor* DamageCauser) override;
 
+	// override hide action so we can hide weapon/gear as well
+	virtual void SetActorHiddenInGame(bool bNewHidden) override;
+
 public:
 
 	// function to set what is being looted from

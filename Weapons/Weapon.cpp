@@ -946,12 +946,16 @@ void AWeapon::AttachMeshToPawn()
 		// Remove and hide both first and third person meshes
 		//DetachMeshFromPawn();
 
+		
 		if (const USkeletalMeshComponent* PawnMesh = PawnOwner->GetMesh())
 		{
-			// locally controlled, use first person socket, otherwise use 3rd
+			// if locally controlled use 1P socket, otherwise use 3P
 			const FName AttachSocket = PawnOwner->IsLocallyControlled() ? AttachSocket1P : AttachSocket3P;
 			AttachToComponent(PawnOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 		}
+
+		// USkeletalMeshComponent* PawnMesh = PawnOwner->GetMesh();
+		// AttachToComponent(PawnOwner->GetMesh(), FAttachmentTransformRules::SnapToTargetNotIncludingScale, AttachSocket);
 	}
 }
 

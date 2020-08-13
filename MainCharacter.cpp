@@ -298,6 +298,18 @@ float AMainCharacter::TakeDamage(float Damage, struct FDamageEvent const& Damage
 	return DamageDealt;
 }
 
+void AMainCharacter::SetActorHiddenInGame(bool bNewHidden) 
+{
+	Super::SetActorHiddenInGame(bNewHidden);
+
+	// if valid weapon equipped
+	if (EquippedWeapon)
+	{
+		// hide weapon
+		EquippedWeapon->SetActorHiddenInGame(bNewHidden);
+	}
+}
+
 
 void AMainCharacter::SetLootSource(class UInventoryComponent* NewLootSource) 
 {
