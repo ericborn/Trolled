@@ -440,6 +440,32 @@ protected:
 	void StartCrouching();
 	void StopCrouching();
 
+	// start/stop sprinting
+	void StartSprinting();
+	void StopSprinting();
+
+	// check if can sprint
+	bool CanSprint() const;
+
+	// sprint speed
+	UPROPERTY(EditDefaultsOnly, Category = Movement)
+	float SprintSpeed;
+
+	/**[server + local] set sprinting*/
+	void SetSprinting(const bool bNewSprinting);
+
+	// server start sprint
+	UFUNCTION(Server, Reliable, WithValidation)
+	void ServerSetSprinting(const bool bNewSprinting);
+
+	// walk speed
+	UPROPERTY()
+	float WalkSpeed;
+
+	// check if sprinting
+	UPROPERTY(Replicated, BlueprintReadOnly, Category = Movement)
+	bool bSprinting;
+
 	/** 
 	 * Called via input to turn at a given rate. 
 	 * @param Rate	This is a normalized rate, i.e. 1.0 means 100% of desired turn rate

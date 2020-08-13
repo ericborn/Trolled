@@ -147,6 +147,10 @@ AMainCharacter::AMainCharacter()
 	MeleeAttackDistance = 150.f;
 	MeleeAttackDamage = 20.f;
 
+	// walk/sprint speed
+	WalkSpeed = GetCharacterMovement()->MaxWalkSpeed;
+	SprintSpeed = GetCharacterMovement()->MaxWalkSpeed * 1.3f;
+
 	// default to not ADS
 	bIsAiming = false;
 
@@ -188,6 +192,9 @@ void AMainCharacter::GetLifetimeReplicatedProps(TArray<FLifetimeProperty>& OutLi
 
 	// replicate who killed the player
 	DOREPLIFETIME(AMainCharacter, Killer);
+
+	// rep sprinting
+	DOREPLIFETIME(AMainCharacter, bSprinting);
 
 	// COND_OwnerOnly reps between server and affected client, not all clients.
 	// cuts down on traffic being sent between all characters for each others health, stam, etc.
@@ -1333,6 +1340,9 @@ void AMainCharacter::SetupPlayerInputComponent(class UInputComponent* PlayerInpu
 	PlayerInputComponent->BindAction("Crouch", IE_Pressed, this, &AMainCharacter::StartCrouching);
 	PlayerInputComponent->BindAction("Crouch", IE_Released, this, &AMainCharacter::StopCrouching);
 
+	PlayerInputComponent->BindAction("Sprint", IE_Pressed, this, &AMainCharacter::StartSprinting);
+	PlayerInputComponent->BindAction("Sprint", IE_Released, this, &AMainCharacter::StopSprinting);
+
 	PlayerInputComponent->BindAxis("MoveForward", this, &AMainCharacter::MoveForward);
 	PlayerInputComponent->BindAxis("MoveRight", this, &AMainCharacter::MoveRight);
 }
@@ -1383,6 +1393,53 @@ void AMainCharacter::StartCrouching()
 void AMainCharacter::StopCrouching() 
 {
 	UnCrouch();
+}
+
+bool AMainCharacter::CanSprint() const
+{
+	// can sprint if not aiming
+	return !IsAiming();
+}
+
+void AMainCharacter::StartSprinting() 
+{
+	SetSprinting(true);	
+}
+
+void AMainCharacter::StopSprinting() 
+{
+	SetSprinting(false);
+}
+
+void AMainCharacter::SetSprinting(const bool bNewSprinting) 
+{
+	// if trying to sprint but cant or already sprinting, just return
+	if ((bNewSprinting && !CanSprint()) || bNewSprinting == bSprinting)
+	{
+		return;
+	}
+	
+	// if local client, tell server to sprint
+	if (!HasAuthority())
+	{
+		ServerSetSprinting(bNewSprinting);
+	}
+
+	// set sprint on
+	bSprinting = bNewSprinting;
+
+	// toggle characters speed between sprint/walk
+	GetCharacterMovement()->MaxWalkSpeed = bSprinting ? SprintSpeed : WalkSpeed;
+}
+
+void AMainCharacter::ServerSetSprinting_Implementation(const bool bNewSprinting) 
+{
+	SetSprinting(bNewSprinting);
+}
+
+bool AMainCharacter::ServerSetSprinting_Validate(const bool bNewSprinting) 
+{
+	return true;
 }
 
 bool AMainCharacter::CanAim() const
