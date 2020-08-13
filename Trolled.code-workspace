@@ -1,0 +1,24 @@
+{
+	"folders": [
+		{
+			"name": "Trolled",
+			"path": "."
+		},
+		{
+			"name": "UE4",
+			"path": "G:\\Unreal\\UE_4.25"
+		}
+	],
+	"settings": {
+		"typescript.tsc.autoDetect": "off",
+		"files.associations": {
+			"filesystem": "cpp"
+		}
+	},
+	"extensions": {
+		"recommendations": [
+			"ms-vscode.cpptools",
+			"ms-dotnettools.csharp"
+		]
+	}
+}

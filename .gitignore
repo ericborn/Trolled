@@ -1,0 +1,18 @@
+# Ignore all
+*
+
+# include all directories, so the files can be found
+!/*
+
+# include all files inside source
+!/Source/**
+
+# include everything inside content
+!/Content/**
+
+#ignore the following inside content
+**/Content/Developers
+**/Content/FPS_Weapon_Bundle
+**/Content/IndustryPropsPack6
+**/Content/StarterContent
+**/Content/VehicleVarietyPack
