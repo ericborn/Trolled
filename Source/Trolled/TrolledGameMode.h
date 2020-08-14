@@ -13,6 +13,18 @@ class ATrolledGameMode : public AGameModeBase
 
 public:
 	ATrolledGameMode();
+
+
+protected:
+
+	// timer for spawning in AI
+	FTimerHandle TSpawnAIHandle;
+
+	// Spawn AI function
+	void SpawnAI();
+
+
+
 };
 
 

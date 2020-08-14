@@ -3,6 +3,9 @@
 #include "TrolledGameMode.h"
 #include "TrolledCharacter.h"
 #include "UObject/ConstructorHelpers.h"
+#include "TimerManager.h"
+#include "Trolled/AI/Zombie.h"
+
 
 ATrolledGameMode::ATrolledGameMode()
 {
@@ -12,4 +15,9 @@ ATrolledGameMode::ATrolledGameMode()
 	{
 		DefaultPawnClass = PlayerPawnBPClass.Class;
 	}
+}
+
+void ATrolledGameMode::SpawnAI() 
+{
+	
 }
