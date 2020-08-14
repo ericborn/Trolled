@@ -16,12 +16,19 @@ public:
 
 
 protected:
+	//virtual void BeginPlay() override;
+
+	// create an array to hold the AI spawn points
+	TArray<class AAISpawnPoint*> AISpawnPoints;
 
 	// timer for spawning in AI
 	FTimerHandle TSpawnAIHandle;
 
 	// Spawn AI function
 	void SpawnAI();
+
+	// set spawn points for AI
+	void SetAISpawnPoints();
 
 
 

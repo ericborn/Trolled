@@ -17,7 +17,16 @@ ATrolledGameMode::ATrolledGameMode()
 	}
 }
 
-void ATrolledGameMode::SpawnAI() 
-{
+// void ATrolledGameMode::BeginPlay() 
+// {
+// 	Super::BeginPlay();
+
+
 	
-}
+// }
+
+// void ATrolledGameMode::SpawnAI() 
+// {
+// 	int RandomIndex = FMath::RandRange(0, )
+	
+// }
